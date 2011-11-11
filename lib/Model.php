@@ -77,6 +77,12 @@ abstract class Model {
 		return static::$table;
 	}
 	
+	static function create($config = null) {
+		$model = new static($config);
+		$model->save();
+		return $model;
+	}
+	
 	static function find($id) {
 		
 		// Explode id:xyz into array(id, xyz);
