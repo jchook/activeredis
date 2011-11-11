@@ -1,10 +1,21 @@
 # PHP ActiveRedis
 
-ActiveRedis is a PHP library that brings relational model abstraction to [Redis](http://redis.io/).
+ActiveRedis is a PHP 5.3+ library that brings relational model abstraction to [Redis](http://redis.io/).
 
 * Lightweight
-* Easily adapts to any Redis interface
+* Easily adapts to any PHP Redis interface
 
+
+## Development
+
+ActiveRedis is currently in its infancy.
+
+However, it is being actively developed. Feel free to fork & join in the fun. There are many planned features, including:
+
+* Relationships
+* Indexing
+* Dynamic getters/setters
+* Better connection management
 
 ## Installation
 
@@ -37,25 +48,10 @@ The model classes can be extremely simple.
 
 ### CRUD: Create, Read, Update, Delete
 
-The following examples do the exact same thing.
-
 ```php
 <?php
 
 // Create
-$human = new Human();
-$human->name = 'Wes';
-$human->age  = 24;
-$human->save();
-
-// Create Alternate
-$human = new Human(array(
-	'name' => 'Wes',
-	'age'  => 24
-));
-$human->save();
-
-// Create Alternate
 $human = Human::create(array(
 	'name' => 'Wes',
 	'age'  => 24
