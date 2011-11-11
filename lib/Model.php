@@ -85,12 +85,12 @@ abstract class Model {
 	
 	static function find($id) {
 		
-		// Explode id:xyz into array(id, xyz);
+		/* Explode id:xyz into array(id, xyz);
 		if (is_string($id) && strpos(static::$keySeparator, $id)) {
 			$id = explode(static::$keySeparator, $id);
 		}
 		
-		/* Check for index
+		// Check for index
 		if (is_array($id) && isset($id[1])) {
 			if (!isset(static::$index[$id[0]])) {
 				throw new Exception('No index defined for field: ' . $id[0]);
