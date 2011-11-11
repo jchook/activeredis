@@ -10,6 +10,7 @@ ActiveRedis is a PHP library that brings relational model abstraction to [Redis]
 
 1. Clone activeredis into your project, or add it as a submodule.
 1. Add the following code to run once in your project:
+
 ```php
 <?php
 
