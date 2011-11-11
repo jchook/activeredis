@@ -2,6 +2,7 @@
 
 ActiveRedis is a PHP 5.3+ library that brings relational model abstraction to [Redis](http://redis.io/).
 
+* Simple
 * Lightweight
 * Easily adapts to any PHP Redis interface
 
@@ -25,9 +26,8 @@ However, it is being actively developed. Feel free to fork & join in the fun. Th
 ```php
 <?php
 
-// Autoloader
-include 'activeredis/lib/Autoload.php';
-ActiveRedis\Autoload::register();
+// Initialize
+include 'activeredis/ActiveRedis.php';
 
 // Configure Database Object
 // In this example we use Predis, but you can use almost any PHP Redis interface.
