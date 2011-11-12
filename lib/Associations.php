@@ -44,7 +44,7 @@ class HasMany extends Association
 		$table->bind('beforeDelete', array($this, 'beforeDelete'));
 	}
 	
-	function associatedModels($left) {
+	function add($left) {
 		$rightClass = $this->right;
 		$left->db()->get($left->key($this->as));
 	}

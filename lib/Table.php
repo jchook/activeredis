@@ -5,7 +5,7 @@ namespace ActiveRedis;
 class Table {
 	
 	public $name;
-	public $class;
+	public $model; // class name
 	public $callbacks;
 	public $separator = ':';
 	public $associations;
@@ -15,7 +15,7 @@ class Table {
 			foreach ($inject as $var => $val)
 				$this->$var = $val;
 		
-		$this->associate();
+		$this->buildAssociations();
 	}
 	
 	static function db() {
@@ -42,20 +42,46 @@ class Table {
 		}
 	}
 	
-	function associate($associations = null) {
+	function findClass($basename, $namespaces) {
+		if (class_exists($basename, false)) {
+			return $basename;
+		}
+		$namespaces = (array) $namespaces;
+		$basename = trim($basename, '\\');
+		$attempts = array();
+		foreach ($namespaces as $namespace) {
+			$className = $namespace . '\\' . $basename;
+			if (class_exists($className)) {
+				return $className;
+			} else {
+				$attempts[] = $className;
+			}
+		}
+		Log::warning('Class ' . $basename . ' could not be resolved. Attempted ' . json_encode($attempts));
+	}
+	
+	function buildAssociations($associations = null) {
 		$associations = (array) ($associations ?: $this->associations);
 		while($association = array_pop($associations)) {
 			$options = null;
 			if (is_array($association)) {
-				list($association, $options) = $association;
+				$options = $association;
+				$association = array_shift($options);
 			}
 			if (is_string($association)) {
-				list($associationClass, $modelClass) = explode(' ', $association);
-				$association = new $associationClass($this->class, $modelClass, $options);
+				list($associationType, $associatedClass) = explode(' ', $association);
+				
+				$associationType = $this->findClass($associationType, array(get_namespace($this->model), __NAMESPACE__));
+				$associatedClass = $this->findClass($associatedClass, get_namespace($this->model));
+				if ($associationType && $associatedClass) {
+					$association = new $associationType($this->model, $associatedClass, $options);
+				}
 			}
 			if (is_object($association) && method_exists($association, 'attach')) {
 				$association->attach($this);
 				$this->associations[$association->through] = $association;
+			} else {
+				throw new Exception('Invalid association ' . $this->model . ' ' . $association);
 			}
 		}
 	}
@@ -97,7 +123,7 @@ class Table {
 	
 	function updateIndex($field) {
 		if (isset($this->attributes[$field])) {
-			$this->db()->set($this->tableKey(array($field, $this->attributes[$field])), $this->primaryKeyValue());
+			$this->db()->set($this->key(array($field, $this->attributes[$field])), $this->primaryKeyValue());
 		}
 	}
 	

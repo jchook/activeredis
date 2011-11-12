@@ -4,6 +4,8 @@ namespace ActiveRedis;
 
 class Autoload 
 {
+	static $ext = '.php';
+	
 	static function load($className) 
 	{
 		// Is related to ActiveRedis?
@@ -13,10 +15,10 @@ class Autoload
 			$s = DIRECTORY_SEPARATOR;
 			
 			// Get path via explode/implode
-			$classFile = __DIR__ . $s . implode($s, array_slice(explode('\\', trim($className, '\\')), 1));
+			$classFile = __DIR__ . $s . implode($s, array_slice(explode('\\', trim($className, '\\')), 1)) . static::$ext;
 			
-			// Get path based via string manipulation
-			// $classFile = __DIR__ . $s . str_replace('\\', $s, substr($className, strlen(__NAMESPACE__) + 1));
+			// Get path via string manipulation
+			// $classFile = __DIR__ . $s . str_replace('\\', $s, substr($className, strlen(__NAMESPACE__) + 1)) . static::$ext;-
 			
 			// Do it :] throw an error if it doesn't work
 			return include $classFile;

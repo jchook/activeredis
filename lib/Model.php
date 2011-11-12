@@ -5,8 +5,9 @@ namespace ActiveRedis;
 abstract class Model {
 	
 	protected $attributes;
-	protected $dirty;
-	protected $new;
+	protected $attribute; // reserved!
+	protected $isDirty;
+	protected $isNew;
 	
 	protected static $primaryKey = 'id';
 	protected static $keySeparator = ':';
@@ -23,7 +24,7 @@ abstract class Model {
 	
 	function __construct($id = null, $isNew = true) {
 		
-		$this->new = $isNew;
+		$this->isNew = $isNew;
 		
 		if (is_array($id)) {
 			$this->attributes = $id;
@@ -34,15 +35,15 @@ abstract class Model {
 	}
 	
 	function __get($var) {
-		if (method_exists($this, $method = 'set' . ucfirst($var))) {
-			return $this->$method($val);
+		if (method_exists($this, $method = 'get' . ucfirst($var))) {
+			return $this->$method();
 		}
 		return $this->getAttribute($var);
 	}
 	
 	function __set($var, $val) {
-		if (method_exists($this, $method = 'get' . ucfirst($var))) {
-			return $this->$method();
+		if (method_exists($this, $method = 'set' . ucfirst($var))) {
+			return $this->$method($val);
 		}
 		$this->setAttribute($var, $val);
 	}
@@ -68,7 +69,8 @@ abstract class Model {
 				static::$table = array('name' => static::$table);
 			}
 			static::$table = new Table(array_merge(array(
-					'name' => static::$table ?: strtolower(basename(strtr(get_called_class(), "\\", '/'))),
+					'name' => static::$table ?: basename(strtr(get_called_class(), "\\", '/')),
+					'model' => get_called_class(),
 					'callbacks' => static::$callbacks ?: array(),
 					'primaryKey' => static::$primaryKey ?: 'id',
 					'associations' => static::$associations ?: array(),
@@ -117,7 +119,7 @@ abstract class Model {
 	}
 	
 	function setAttribute($var, $val) {
-		$this->dirty[$var] = true;
+		$this->isDirty[$var] = true;
 		return $this->attributes[$var] = $val;
 	}
 	
@@ -149,11 +151,11 @@ abstract class Model {
 	}
 	
 	function isDirty() {
-		return $this->dirty;
+		return $this->isDirty;
 	}
 	
 	function isNew() {
-		return $this->new;
+		return $this->isNew;
 	}
 	
 	function delete() {
@@ -172,8 +174,8 @@ abstract class Model {
 			} else {
 				$result = $this->update();
 			}
-			$this->new = false;
-			$this->dirty = false;
+			$this->isNew = false;
+			$this->isDirty = array();
 			$this->trigger('afterSave', array(&$this, $isNew, $result));
 			return $result;
 		}
@@ -183,7 +185,7 @@ abstract class Model {
 	protected function insert() {
 		if ($success = $this->table()->insert($this)) {
 			$this->isNew = false;
-			$this->dirty = false;
+			$this->isDirty = false;
 			return $success;
 		}
 	}
@@ -226,6 +228,5 @@ abstract class Model {
 	}
 	
 }
-
 
 ?>
