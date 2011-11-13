@@ -9,7 +9,7 @@ class Autoload
 	static function load($className) 
 	{
 		// Is related to ActiveRedis?
-		if (substr_compare($className, __NAMESPACE__) == 0) {
+		if (substr_compare($className, __NAMESPACE__, 0) == 0) {
 			
 			// System independent
 			$s = DIRECTORY_SEPARATOR;

@@ -4,11 +4,11 @@ namespace ActiveRedis;
 
 class Log {
 	
-	static $function = 'static::log';
-	static $prefixes = array(__NAMESPACE__);
-	static $passthru = false;
+	public static $function = 'static::log';
+	public static $prefixes = array(__NAMESPACE__);
+	public static $passthru;
 	
-	static function __callStatic($fn, $args)
+	public static function __callStatic($fn, $args)
 	{
 		if (static::$passthru) {
 			$log = implode(' ', array_merge((array) static::$prefixes, (array) $args));
@@ -19,7 +19,7 @@ class Log {
 		}
 	}
 	
-	static function log()
+	public static function log()
 	{
 		error_log(implode(' ', func_get_args()));
 	}

@@ -6,6 +6,7 @@ class Table {
 	
 	public $name;
 	public $model; // class name
+	public $database; // name
 	public $callbacks;
 	public $separator = ':';
 	public $associations;
@@ -42,6 +43,10 @@ class Table {
 		}
 	}
 	
+	function associations() {
+		return (array) $this->associations;
+	}
+	
 	function findClass($basename, $namespaces) {
 		if (class_exists($basename, false)) {
 			return $basename;
@@ -60,23 +65,28 @@ class Table {
 		Log::warning('Class ' . $basename . ' could not be resolved. Attempted ' . json_encode($attempts));
 	}
 	
-	function buildAssociations($associations = null) {
+	function buildAssociations($associations = null) 
+	{
 		$associations = (array) ($associations ?: $this->associations);
-		while($association = array_pop($associations)) {
+		
+		while($association = array_pop($associations)) 
+		{	
 			$options = null;
+			
 			if (is_array($association)) {
 				$options = $association;
 				$association = array_shift($options);
 			}
+			
 			if (is_string($association)) {
 				list($associationType, $associatedClass) = explode(' ', $association);
-				
 				$associationType = $this->findClass($associationType, array(get_namespace($this->model), __NAMESPACE__));
 				$associatedClass = $this->findClass($associatedClass, get_namespace($this->model));
 				if ($associationType && $associatedClass) {
 					$association = new $associationType($this->model, $associatedClass, $options);
 				}
 			}
+			
 			if (is_object($association) && method_exists($association, 'attach')) {
 				$association->attach($this);
 				$this->associations[$association->through] = $association;

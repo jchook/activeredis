@@ -13,14 +13,20 @@ abstract class Model {
 	protected static $keySeparator = ':';
 	protected static $table;
 	
+	// Not yet supported
+	protected static $index; // which properties to index
+	
 	// Callbacks
 	protected static $callbacks;
+	
+	// Behaviors
+	protected static $behaviors;
 	
 	// Associations
 	protected static $associations;
 	
-	// Not yet supported
-	protected static $index; // which properties to index
+	// Associated object references, keyed by association
+	public $associated;
 	
 	function __construct($id = null, $isNew = true) {
 		
@@ -34,10 +40,19 @@ abstract class Model {
 		}
 	}
 	
-	function __get($var) {
+	function &__get($var) 
+	{
+		// Dynamic getters first
 		if (method_exists($this, $method = 'get' . ucfirst($var))) {
 			return $this->$method();
 		}
+		
+		// Check for associations that match the name
+		if ($this->associated($var)) {
+			return $this->associated[$var];
+		}
+		
+		// Attempt to get the attribute
 		return $this->getAttribute($var);
 	}
 	
@@ -46,7 +61,7 @@ abstract class Model {
 			return $this->$method($val);
 		}
 		$this->setAttribute($var, $val);
-	}
+	}	
 	
 	public static function bind($callbackName, $callback) {
 		return static::table()->bind($callbackName, $callback);
@@ -85,21 +100,8 @@ abstract class Model {
 		return $model;
 	}
 	
-	static function find($id) {
-		
-		/* Explode id:xyz into array(id, xyz);
-		if (is_string($id) && strpos(static::$keySeparator, $id)) {
-			$id = explode(static::$keySeparator, $id);
-		}
-		
-		// Check for index
-		if (is_array($id) && isset($id[1])) {
-			if (!isset(static::$index[$id[0]])) {
-				throw new Exception('No index defined for field: ' . $id[0]);
-			}
-		}
-		*/
-		
+	static function find($id) 
+	{	
 		// Instantiate new class
 		$class = get_called_class();
 		if ($data = static::db()->get(static::table()->key($id))) {
@@ -118,6 +120,50 @@ abstract class Model {
 		return json_encode($this->toArray());
 	}
 	
+	public function &associated($name = null)
+	{
+		if (is_null($name)) {
+			return $this->associated;
+		}
+		if (!isset($this->associated[$name])) {
+			if ($association = $this->association($name)) {
+				$this->associated[$name] = $association->associated($this);
+			}
+		}
+	}
+	
+	function association($name)
+	{
+		if ($association = $this->table()->association($name)) {
+			return $association->delegate($this);
+		}
+	}
+	
+	function attr($get, $set = null) 
+	{
+		if (!is_null($set)) {
+			return $this->setAttribute($get, $set);
+		}
+		return $this->getAttribute($get);
+	}
+	
+	function getAttributes($list) {
+		$result = array();
+		foreach ($list as $id => $val) {
+			if ($id && is_string($id)) {
+				$result[$id] = $this->getAttribute($id) ?: $val;
+			} else {
+				$result[$val] = $this->getAttribute($val);
+			}
+		}
+	}
+	
+	function setAttributes($attributes) {
+		foreach ($attributes as $var => $val) {
+			$this->setAttribute($var, $val);
+		}
+	}
+	
 	function setAttribute($var, $val) {
 		$this->isDirty[$var] = true;
 		return $this->attributes[$var] = $val;
@@ -127,6 +173,7 @@ abstract class Model {
 		if (isset($this->attributes[$var])) {
 			return $this->attributes[$var];
 		}
+		Log::notice('Undefined attribute ' . $var . ' in ' . $this);
 	}
 	
 	static function primaryKey() {
@@ -211,10 +258,13 @@ abstract class Model {
 		return $this->key();
 	}
 	
-	function validate($data = null) {
-		
+	function validate($data = null) 
+	{
+		// Allow user to supply arbitrary data to validate
+		// If you don't like this, override it in your model.
 		$data or $data = $this->toArray();
 		
+		// Run user validators
 		foreach ($data as $var => $val) {
 			if (method_exists($this, $validateMethod = 'validate' . ucfirst($var))) {
 				$result = $this->$validateMethod($val);
@@ -224,6 +274,7 @@ abstract class Model {
 			}
 		}
 		
+		// Valid unless invalid
 		return true;
 	}
 	
