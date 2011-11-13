@@ -25,41 +25,45 @@ abstract class Model {
 	// Associations
 	protected static $associations;
 	
-	// Associated object references, keyed by association
+	// For reference returns
+	public static $null;
+	
+	// Associated models
 	public $associated;
 	
-	function __construct($id = null, $isNew = true) {
-		
+	
+	function __construct($id = null, $isNew = true) 
+	{	
 		$this->isNew = $isNew;
 		
 		if (is_array($id)) {
 			$this->attributes = $id;
 		}
-		elseif ($id) {
-			
-		}
 	}
 	
-	function &__get($var) 
+	function __get($var) 
 	{
 		// Dynamic getters first
 		if (method_exists($this, $method = 'get' . ucfirst($var))) {
 			return $this->$method();
 		}
 		
-		// Check for associations that match the name
-		if ($this->associated($var)) {
-			return $this->associated[$var];
+		if ($association = $this->table()->association($var)) {
+			return $assocation->delegate($this);
 		}
 		
 		// Attempt to get the attribute
 		return $this->getAttribute($var);
 	}
 	
-	function __set($var, $val) {
+	function __set($var, $val) 
+	{
+		Log::debug(__CLASS__ . '::' . __FUNCTION__ . "($var, $val);");
+		
 		if (method_exists($this, $method = 'set' . ucfirst($var))) {
 			return $this->$method($val);
 		}
+		
 		$this->setAttribute($var, $val);
 	}	
 	
@@ -130,6 +134,7 @@ abstract class Model {
 				$this->associated[$name] = $association->associated($this);
 			}
 		}
+		return $this->associated[$name];
 	}
 	
 	function association($name)

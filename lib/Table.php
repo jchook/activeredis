@@ -16,7 +16,7 @@ class Table {
 			foreach ($inject as $var => $val)
 				$this->$var = $val;
 		
-		$this->buildAssociations();
+	//	$this->buildAssociations();
 	}
 	
 	static function db() {
@@ -29,12 +29,14 @@ class Table {
 	}
 	
 	function trigger($callbackName, $args = null) {
+		$result = null;
 		$callbacks = isset($this->callbacks[$callbackName]) ? (array) $this->callbacks[$callbackName] : array();
 		foreach ($callbacks as $callback) {
-			if (call_user_func_array($callback, $args) === false) {
+			if (($result = call_user_func_array($callback, $args)) === false) {
 				return false;
 			}
 		}
+		return $result;
 	}
 	
 	function association($throughName) {
@@ -89,7 +91,8 @@ class Table {
 			
 			if (is_object($association) && method_exists($association, 'attach')) {
 				$association->attach($this);
-				$this->associations[$association->through] = $association;
+				$this->associations[$association->name] = $association;
+				Log::debug($this->name . ' associated with ' . $association->name);
 			} else {
 				throw new Exception('Invalid association ' . $this->model . ' ' . $association);
 			}
