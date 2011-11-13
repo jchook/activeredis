@@ -64,35 +64,21 @@ abstract class Association
 	}
 	
 	
-	function get() 
+	function &get() 
 	{
-		// Allow the result of the callbacks to override the model
-		// This lends a lot of power to Behaviors
-		$result = $this->left->table()->trigger('beforeGetAssociated', array($this->left, $this));
-		if (!is_null($result)) {
-			return $result;
+		if (!$this->left->associatedKeyExists($this->name)) {
+			$this->left->associated($this->name, $this->associated());
 		}
-		
-		// Okay, let the particular association have a word
-		// be flexible about the arguments too
-		$args = func_get_args();
-		array_unshift($args, $this->left);
-		$result = call_user_func_array(array($this, 'associated'), $args);
-		
-		// But also let the afterGetAssociated function totally override the result
-		if (null !== ($altResult = $this->left->table()->trigger('afterGetAssociated', array($this->left, $this, $result)))) {
-			return $altResult;
-		}
-		
-		// Hopefully this is a properly associated model object
-		return $result;
+		return $this->left->associated($this->name);
 	}
 	
 	function put($right) {
 		$this->left->table()->trigger('beforePutAssociated', array($this->left, $this, $right));
-		$result = $this->associate($this->left, $right);
-		$this->left->table()->trigger('afterPutAssociated', array($this->left, $this, $right));
-		return $result;
+		if (false !== ($result = $this->associate($this->left, $right))) {
+			$this->left->associated($this->name, $right);
+			return $result;
+		}
+		$this->left->table()->trigger('afterPutAssociated', array($this->left, $this, $right, $result));
 	}
 	
 	

@@ -124,15 +124,21 @@ abstract class Model {
 		return json_encode($this->toArray());
 	}
 	
-	public function &associated($name = null)
+	public function associatedKeyExists($name) 
+	{
+		return isset($this->associated[$name]);
+	}
+	
+	public function &associated($name = null, $set = false)
 	{
 		if (is_null($name)) {
 			return $this->associated;
 		}
-		if (!isset($this->associated[$name])) {
-			if ($association = $this->association($name)) {
-				$this->associated[$name] = $association->associated($this);
-			}
+		if ($set !== false) {
+			$this->associated[$name] = $set;
+		}
+		elseif (!isset($this->associated[$name])) {
+			$this->associated[$name] = null;
 		}
 		return $this->associated[$name];
 	}
