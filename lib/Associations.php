@@ -58,24 +58,28 @@ abstract class Association
 	/**
 	 * Returned by the left model when a user accesses the association
 	 */
-	function &delegate($left) {
+	function &delegate($left = null) {
+		if (!$left && !$this->left) {
+			throw new Exception('Cannot produce associated delegate for ' . $this->leftClass . '->' . $this->name . ' because no model object was given.');
+		}
 		$this->left = $left;
 		return $this;
 	}
 	
-	
 	function &get() 
 	{
+		// If there are no associated classes, access them here
 		if (!$this->left->associatedKeyExists($this->name)) {
-			$this->left->associated($this->name, $this->associated());
+			$this->left->associated($this->name, $this->associated($this->left));
 		}
 		return $this->left->associated($this->name);
 	}
 	
-	function put($right) {
+	function put(Model $right) {
 		$this->left->table()->trigger('beforePutAssociated', array($this->left, $this, $right));
 		if (false !== ($result = $this->associate($this->left, $right))) {
-			$this->left->associated($this->name, $right);
+			// $this->left->associated($this->name, $right);
+			$this->toBeAssociated[] = $right;
 			return $result;
 		}
 		$this->left->table()->trigger('afterPutAssociated', array($this->left, $this, $right, $result));

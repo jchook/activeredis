@@ -16,7 +16,9 @@ class Table {
 			foreach ($inject as $var => $val)
 				$this->$var = $val;
 		
-	//	$this->buildAssociations();
+		Log::debug('Table loaded');
+		
+		$this->buildAssociations();
 	}
 	
 	static function db() {
@@ -41,8 +43,10 @@ class Table {
 	
 	function association($throughName) {
 		if (isset($this->associations[$throughName])) {
+			Log::debug($this->model . ' table -> association(' . $throughName . ') found');
 			return $this->associations[$throughName];
 		}
+		Log::debug($this->model . ' table -> association(' . $throughName . ') does not exist ' . json_encode($this->associations));
 	}
 	
 	function associations() {
@@ -134,7 +138,7 @@ class Table {
 		return $result;
 	}
 	
-	function updateIndex($field) {
+	function updateIndex(Model $model, $field) {
 		if (isset($this->attributes[$field])) {
 			$this->db()->set($this->key(array($field, $this->attributes[$field])), $this->primaryKeyValue());
 		}

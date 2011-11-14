@@ -31,7 +31,6 @@ abstract class Model {
 	// Associated models
 	public $associated;
 	
-	
 	function __construct($id = null, $isNew = true) 
 	{	
 		$this->isNew = $isNew;
@@ -49,7 +48,8 @@ abstract class Model {
 		}
 		
 		if ($association = $this->table()->association($var)) {
-			return $assocation->delegate($this);
+			Log::debug(get_class($this) . '::' . __FUNCTION__ . "($var) is an association => " . get_class($association));
+			return $association->delegate($this);
 		}
 		
 		// Attempt to get the attribute
@@ -84,6 +84,7 @@ abstract class Model {
 	
 	static function table() {
 		if (!is_object(static::$table)) {
+			Log::debug(get_called_class() . '::table() loading Table object');
 			if (is_string(static::$table)) {
 				static::$table = array('name' => static::$table);
 			}
