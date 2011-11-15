@@ -12,6 +12,7 @@ abstract class Association
 	public $rightClass;
 	
 	public $name;
+	public $foreignKey;
 	
 	public $eager; // whether to autolaod on default
 	
@@ -26,10 +27,11 @@ abstract class Association
 			}
 		}
 		
-		// default
-		if (!$this->name) {
-			$this->name = lcfirst(array_pop(explode("\\", $this->rightClass)));
-		}
+		// Default name
+		$this->name or $this->name = lcfirst(array_pop(explode('\\', get_class($this))));
+		
+		// Default foreign key
+		$this->foreignKey or $this->foreignKey = $this->name . '_' . $rightClass::primaryKey();
 	}
 	
 	/**
@@ -65,37 +67,12 @@ abstract class Association
 		$this->left = $left;
 		return $this;
 	}
-	
-	function &get() 
-	{
-		// If there are no associated classes, access them here
-		if (!$this->left->associatedKeyExists($this->name)) {
-			$this->left->associated($this->name, $this->associated($this->left));
-		}
-		return $this->left->associated($this->name);
-	}
-	
-	function put(Model $right) {
-		$this->left->table()->trigger('beforePutAssociated', array($this->left, $this, $right));
-		if (false !== ($result = $this->associate($this->left, $right))) {
-			// $this->left->associated($this->name, $right);
-			$this->toBeAssociated[] = $right;
-			return $result;
-		}
-		$this->left->table()->trigger('afterPutAssociated', array($this->left, $this, $right, $result));
-	}
-	
-	
 }
 
 class HasOne extends Association
 {
 	function associate(Model $left, Model $right) {
-		$left->db()->set($left->key($this->name), $right->primaryKeyValue());
-	}
-	
-	function set(Model $right) {
-		$this->namesociate($this->left, $right);
+		$left->setAttribute($this->foreignKey, $right->primaryKeyValue());
 	}
 	
 	function attach(Table $table) {
@@ -103,19 +80,22 @@ class HasOne extends Association
 	}
 	
 	function beforeDelete($left) {
-		$left->db()->del($left->key($this->name));
+		$left->setAttribute($this->foreignKey, null);
 	}
 	
 	function associated(Model $left) {
 		// get a model
 		$rightClass = $this->rightClass;
-		if ($id = $left->table()->get($this->name)) {
+		if ($id = $left->table()->get($this->foreignKey)) {
 			return $rightClass::find($id);
 		}
 	}
 }
 
-class BelongsTo extends HasOne {}
+class BelongsTo extends HasOne 
+{
+	// Does the same thing as HasOne
+}
 
 class HasMany extends Association 
 {
@@ -123,16 +103,8 @@ class HasMany extends Association
 		$table->bind('beforeDelete', array($this, 'beforeDelete'));
 	}
 	
-	function get($start = null, $length = null) {
-		return $this->namesociated($this->left, $start, $length);
-	}
-	
-	function add(Model $right) {
-		$this->namesociate($this->left, $right);
-	}
-	
 	function associate(Model $left, Model $right) {
-		$left->db()->sadd($left->key($this->name), $right->primaryKeyValue());
+		$left->setAttribute($this->rightForeignKey, $right->primaryKeyValue());
 	}
 	
 	function dataAssociatedWith(Model $left) {
@@ -148,8 +120,8 @@ class HasMany extends Association
 	}
 }
 
-class HasManySorted extends HasMany {
-	
+class HasManySorted extends HasMany 
+{	
 	public $by;
 	
 	function attach(Table $table) {}

@@ -4,6 +4,7 @@ namespace ActiveRedis;
 
 abstract class Model {
 	
+	protected $associated;
 	protected $attributes;
 	protected $attribute; // reserved!
 	protected $isDirty;
@@ -27,9 +28,6 @@ abstract class Model {
 	
 	// For reference returns
 	public static $null;
-	
-	// Associated models
-	public $associated;
 	
 	function __construct($id = null, $isNew = true) 
 	{	
@@ -60,10 +58,28 @@ abstract class Model {
 	{
 		Log::debug(__CLASS__ . '::' . __FUNCTION__ . "($var, $val);");
 		
+		// First check for a setter
 		if (method_exists($this, $method = 'set' . ucfirst($var))) {
 			return $this->$method($val);
 		}
 		
+		// Is it an association?
+		if ($var instanceof Model && ($association = $this->table()->association($var))) {
+			
+			// Associate the models
+			$association->associate($this, $var);
+			
+			// Now we have to store the association in case you want it later
+			if ($association::$poly) {
+				$this->associated[$var][] = $val;
+			} else {
+				$this->associated[$var] = $val;
+			}
+			
+			return; // return value is ignored by PHP
+		}
+		
+		// If nothing else, just set the attribute :]
 		$this->setAttribute($var, $val);
 	}	
 	
@@ -177,7 +193,9 @@ abstract class Model {
 	}
 	
 	function setAttribute($var, $val) {
-		$this->isDirty[$var] = true;
+		if (!isset($this->attributes[$var]) || ($this->attributes[$var] !== $val)) {
+			$this->isDirty[$var] = true;
+		}
 		return $this->attributes[$var] = $val;
 	}
 	
@@ -188,8 +206,15 @@ abstract class Model {
 		Log::notice('Undefined attribute ' . $var . ' in ' . $this);
 	}
 	
+	static function foreignKey() {
+		if (!static::$foreignKey) {
+			static::$foreignKey = lcfirst(array_pop(explode('\\', get_called_class()))) . '_' . ($leftClass::$primaryKey ?: 'id')
+		}
+		return static::$foreignKey;
+	}
+	
 	static function primaryKey() {
-		return static::$primaryKey;
+		return static::$primaryKey ?: 'id';
 	}
 	
 	function primaryKeyValue($setValue = false) {

@@ -8,6 +8,11 @@ namespace ActiveRedis {
 		return implode('\\', array_slice(explode('\\', $className), $start, $length));
 	}
 	
+	function get_class_basename($class) 
+	{
+		return array_pop(explode('\\', get_class($this));
+	}
+	
 }
 
 namespace {
