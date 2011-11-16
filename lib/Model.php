@@ -48,7 +48,7 @@ abstract class Model {
 		// Associations
 		if ($association = $this->table()->association($var)) {
 			Log::debug(get_class($this) . '::' . __FUNCTION__ . "($var) is an association => " . get_class($association));
-			if (!isset($this->assicated[$var])) {
+			if (!isset($this->associated[$var])) {
 				$this->associated[$var] = $association->delegate($this);
 			}
 			return $this->associated[$var];
@@ -278,8 +278,8 @@ abstract class Model {
 		}
 	}
 	
-	function setAttribute($var, $val) {
-		Log::temp(get_class($this) . '::' . __FUNCTION__ . "($var, " . var_export($val, 1) . ')');
+	function setAttribute($var, $val) 
+	{
 		if (!isset($this->attributes[$var]) || ($this->attributes[$var] !== $val)) {
 			$this->isDirty[$var] = true;
 		}
@@ -287,14 +287,16 @@ abstract class Model {
 		return $this->attributes[$var];
 	}
 	
-	function getAttribute($var) {
+	function getAttribute($var) 
+	{
 		if (isset($this->attributes[$var])) {
 			return $this->attributes[$var];
 		}
 		Log::notice('Undefined attribute ' . $var . ' in ' . get_class($this));
 	}
 	
-	static function foreignKey() {
+	static function foreignKey() 
+	{
 		if (!static::$foreignKey) {
 			static::$foreignKey = lcfirst(array_pop(explode('\\', get_called_class()))) . '_' . ($leftClass::$primaryKey ?: 'id');
 		}
@@ -321,7 +323,8 @@ abstract class Model {
 		return $this->primaryKeyValue();
 	}
 	
-	function key(/* polymorphic */) {
+	function key(/* polymorphic */) 
+	{
 		$keys = array_flatten(array($this->primaryKeyValue(), func_get_args()));
 		return $this->table()->key($keys);
 	}
@@ -338,7 +341,8 @@ abstract class Model {
 		return $this->db()->del($this->key());
 	}
 	
-	function save($validate = true) {
+	function save($validate = true) 
+	{
 		if ($validate) {
 			if (!$this->validate()) {
 				return false;
@@ -360,7 +364,8 @@ abstract class Model {
 		return true; // record is already up-to-date
 	}
 	
-	protected function insert() {
+	protected function insert() 
+	{
 		if ($success = $this->table()->insert($this)) {
 			$this->isNew = false;
 			$this->isDirty = false;
@@ -368,7 +373,8 @@ abstract class Model {
 		}
 	}
 	
-	protected function update() {
+	protected function update() 
+	{
 		if ($this->isNew()) {
 			throw new Exception('Cannot update new record');
 		}
