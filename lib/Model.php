@@ -90,32 +90,70 @@ abstract class Model {
 		return $this->mergeAttribute($var, $val);
 	}
 	
-	public static function bind($callbackName, $callback) {
-		return static::table()->bind($callbackName, $callback);
+	/**
+	 * Bind a callback to a particular event name
+	 * 
+	 * @param string $eventName
+	 * @param callback $callback
+	 * @return bool
+	 */
+	public static function bind($eventName, $callback) 
+	{
+		return static::table()->bind($eventName, $callback);
 	}
 	
-	public static function trigger($callbackName, $args = null) {
+	/**
+	 * Trigger callbacks associated with a particular event name
+	 * 
+	 * @param string $eventName
+	 * @param mixed $args null | array of arguments
+	 * @return mixed
+	 */
+	public static function trigger($eventName, $args = null)
+	{
 		if (is_null($args)) {
 			$args = array(&$this);
 		}
-		return static::table()->trigger($callbackName, $args);
+		return static::table()->trigger($eventName, $args);
 	}
 	
-	static function db() {
+	/**
+	 * Get the database adapter associated with this model
+	 * 
+	 * @return Adapter
+	 */
+	static function db() 
+	{
 		return static::table()->db();
 	}
 	
+	/**
+	 * Get the table object associated with this model
+	 * 
+	 * @return Table
+	 */
 	static function table() 
 	{
 		return Table::instance(get_called_class());
 	}
 	
-	static function create($config = null) {
+	/**
+	 * Create a new instance of this model
+	 * Automatically saves to the database
+	 */
+	static function create($config = null) 
+	{
 		$model = new static($config);
 		$model->save();
 		return $model;
 	}
 	
+	/**
+	 * Retrieve an instance of this model from the database
+	 * 
+	 * @param mixed $id
+	 * @return Model
+	 */
 	static function find($id) 
 	{	
 		// Instantiate new class
@@ -128,19 +166,43 @@ abstract class Model {
 		throw new Exception('Not found');
 	}
 	
-	static function unserialize($data) {
+	/**
+	 * Unserialize data from the database
+	 * 
+	 * @param array $data
+	 * @return Model
+	 */
+	static function unserialize($data) 
+	{
 		return new static(json_decode($data), false);
 	}
 	
-	function serialize() {
+	/**
+	 * Serialize a model for storage in the database
+	 * 
+	 * @return string
+	 */
+	function serialize() 
+	{
 		return json_encode($this->toArray());
 	}
 	
+	/**
+	 * Check to see if a particular association has been
+	 * invoked / cached for this model
+	 * 
+	 * @param string $name
+	 * @return bool
+	 */
 	public function associatedKeyExists($name) 
 	{
 		return isset($this->associated[$name]);
 	}
 	
+	/**
+	 * @param mixed $name optional
+	 * @param mixed $set optional
+	 */
 	public function &associated($name = null, $set = false)
 	{
 		if (is_null($name)) {
@@ -155,6 +217,12 @@ abstract class Model {
 		return $this->associated[$name];
 	}
 	
+	/**
+	 * Get a table association object by name
+	 * 
+	 * @param string name
+	 * @return mixed Association | null
+	 */
 	function association($name)
 	{
 		if ($association = $this->table()->association($name)) {
@@ -162,6 +230,13 @@ abstract class Model {
 		}
 	}
 	
+	/**
+	 * Gets or sets an attribute by name
+	 * 
+	 * @param string $get
+	 * @param mixed $set optional
+	 * @return mixed
+	 */
 	function attr($get, $set = null) 
 	{
 		if (!is_null($set)) {
