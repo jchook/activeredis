@@ -4,6 +4,8 @@ namespace ActiveRedis;
 
 class Table {
 	
+	protected static $instances;
+	
 	public $name;
 	public $model; // class name
 	public $database; // name
@@ -22,6 +24,28 @@ class Table {
 		
 		$this->buildAssociations();
 		$this->buildBehaviors();
+	}
+	
+	static function instance($class)
+	{
+		if (!isset(static::$instances[$class])) 
+		{
+			if (!class_exists($class)) {
+				throw new Exception('Cannot create table for non-existent model class: ' . $class);
+			}
+			if (is_string($class::$table)) {
+				$class::$table = array('name' => static::$table);
+			}
+			static::$instances[$class] = new Table(array_merge(array(
+				'name' => $class::$table ?: basename(strtr($class, "\\", '/')),
+				'model' => $class,
+				'callbacks' => $class::$callbacks ?: array(),
+				'behaviors' => $class::$behaviors ?: array(),
+				'primaryKey' => $class::$primaryKey ?: 'id',
+				'associations' => $class::$associations ?: array(),
+			), (array) $class::$table));
+		}
+		return static::$instances[$class];
 	}
 	
 	static function db() 

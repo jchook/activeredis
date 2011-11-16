@@ -9,21 +9,21 @@ abstract class Model {
 	protected $isDirty;
 	protected $isNew;
 	
-	protected static $primaryKey = 'id';
-	protected static $keySeparator = ':';
-	protected static $table;
+	static $primaryKey = 'id';
+	static $keySeparator = ':';
+	static $table;
 	
 	// Not yet supported
-	protected static $index; // which properties to index
+	static $index; // which properties to index
 	
 	// Callbacks
-	protected static $callbacks;
+	static $callbacks;
 	
 	// Behaviors
-	protected static $behaviors = array('DeepSave');
+	static $behaviors = array('DeepSave');
 	
 	// Associations
-	protected static $associations;
+	static $associations;
 	
 	// For reference returns
 	public static $null;
@@ -105,22 +105,9 @@ abstract class Model {
 		return static::table()->db();
 	}
 	
-	static function table() {
-		if (!is_object(static::$table)) {
-			Log::debug(get_called_class() . '::table() loading Table object');
-			if (is_string(static::$table)) {
-				static::$table = array('name' => static::$table);
-			}
-			static::$table = new Table(array_merge(array(
-					'name' => static::$table ?: basename(strtr(get_called_class(), "\\", '/')),
-					'model' => get_called_class(),
-					'callbacks' => static::$callbacks ?: array(),
-					'behaviors' => static::$behaviors ?: array(),
-					'primaryKey' => static::$primaryKey ?: 'id',
-					'associations' => static::$associations ?: array(),
-				), (array) static::$table));
-		}
-		return static::$table;
+	static function table() 
+	{
+		return Table::instance(get_called_class());
 	}
 	
 	static function create($config = null) {

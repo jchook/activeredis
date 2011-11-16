@@ -54,6 +54,8 @@ class DeepSave extends Behavior
 				}
 			}
 		}
+		
+		Log::debug(var_export($associated, 1));
 	}
 }
 
