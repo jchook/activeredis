@@ -271,7 +271,9 @@ abstract class Model {
 	
 	function save($validate = true) {
 		if ($validate) {
-			$this->validate();
+			if (!$this->validate()) {
+				return false;
+			}
 		}
 		$isNew = $this->isNew();
 		if ($isNew || $this->isDirty()) {

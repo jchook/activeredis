@@ -31,14 +31,22 @@ class Table {
 		return $this;
 	}
 	
-	function trigger($callbackName, $args = null) {
+	function trigger($callbackName, $args = null) 
+	{
 		$result = null;
 		$callbacks = isset($this->callbacks[$callbackName]) ? (array) $this->callbacks[$callbackName] : array();
-		foreach ($callbacks as $callback) {
-			if (($result = call_user_func_array($callback, $args)) === false) {
-				return false;
+		
+		if ($callbacks) 
+		{	
+			Log::debug($this->model . ' triggering ' . count($callbacks) . ' callbacks for ' . $callbackName);
+			
+			foreach ($callbacks as $callback) {
+				if (($result = call_user_func_array($callback, $args)) === false) {
+					return false;
+				}
 			}
 		}
+		
 		return $result;
 	}
 	
@@ -90,6 +98,8 @@ class Table {
 			}
 			
 			$this->behaviors[$behavior] = new $behaviorClass($this, $options);
+			
+			Log::debug($this->model . ' attached behavior ' . $behaviorClass);
 		}
 	}
 	
