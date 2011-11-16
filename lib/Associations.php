@@ -114,7 +114,9 @@ class HasMany extends Association
 	}
 	
 	function associate(Model $left, Model $right) {
-		$left->setAttribute($this->foreignKey, $right->primaryKeyValue());
+		Log::temp('Associating ' . get_class($left) . ' and ' . get_class($right));
+		Log::temp('Setting $left->' . $this->foreignKey . ' to ' . $right->primaryKeyValue());
+		$left->addAttribute($this->foreignKey, $right->primaryKeyValue());
 	}
 	
 	function dataAssociatedWith(Model $left) {

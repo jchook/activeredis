@@ -258,8 +258,8 @@ abstract class Model {
 	
 	function addAttribute($var, $val)
 	{
-		$this->attributes = (array) $this->attributes;
-		return $this->mergeAttribute($var, $var);
+		$this->attributes[$var] = isset($this->attributes[$var]) ? (array) $this->attributes[$var] : array();
+		return $this->mergeAttribute($var, $val);
 	}
 	
 	function mergeAttribute($var, $val)
@@ -279,10 +279,12 @@ abstract class Model {
 	}
 	
 	function setAttribute($var, $val) {
+		Log::temp(get_class($this) . '::' . __FUNCTION__ . "($var, " . var_export($val, 1) . ')');
 		if (!isset($this->attributes[$var]) || ($this->attributes[$var] !== $val)) {
 			$this->isDirty[$var] = true;
 		}
-		return $this->attributes[$var] = $val;
+		$this->attributes[$var] = $val;
+		return $this->attributes[$var];
 	}
 	
 	function getAttribute($var) {
@@ -307,10 +309,12 @@ abstract class Model {
 	function primaryKeyValue($setValue = false) 
 	{
 		if ($setValue === false) {
-			return $this->getAttribute($this->primaryKey());
-		} else {
-			return $this->setAttribute($this->primaryKey(), $setValue);
+			if ($value = $this->getAttribute($this->primaryKey())) {
+				return $value;
+			}
+			$setValue = $this->table()->nextUnique($this->primaryKey());
 		}
+		return $this->setAttribute($this->primaryKey(), $setValue);
 	}
 	
 	function id() {
