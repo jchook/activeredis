@@ -69,25 +69,11 @@ abstract class Model {
 		}
 		
 		// Associations
-		if (($val instanceof Model) && ($association = $this->table()->association($var))) {
-			
-			Log::debug(get_class($this) . '::' . __FUNCTION__ . "($var) is an association => " . get_class($association));
-			
-			// Associate the models
-			$association->associate($this, $val);
-			
-			// Store the association for DeepSave, etc
-			if ($association::$poly) {
-				$this->associated[$var][] = $val;
-			} else {
-				$this->associated[$var] = $val;
-			}
-			
-			// Return value of __set is ignored by PHP
-			return $val;
+		if ($val instanceof Model) {
+			return $this->associate($var, $val);
 		}
 		
-		return $this->mergeAttribute($var, $val);
+		return $this->setAttribute($var, $val);
 	}
 	
 	/**
@@ -182,9 +168,37 @@ abstract class Model {
 	 * 
 	 * @return string
 	 */
-	function serialize() 
+	public function serialize() 
 	{
 		return json_encode($this->toArray());
+	}
+	
+	/**
+	 * Associate a model with this model via an existing table association
+	 * 
+	 * @param string $associationName
+	 * @param Model $associatedModel
+	 * @return Model
+	 */
+	public function associate($associationName, $associatedModel)
+	{
+		if ($association = $this->table()->association($associationName)) 
+		{
+			Log::debug('Creating association ' . get_class($this) . '->' . $associationName . ' = ' . get_class($associatedModel));
+			
+			// Associate the models
+			$association->associate($this, $associatedModel);
+			
+			// Store the association for DeepSave, etc
+			if ($association::$poly) {
+				$this->associated[$associationName][] = $associatedModel;
+			} else {
+				$this->associated[$associationName] = $associatedModel;
+			}
+		} 
+		else {
+			throw new Exception('Association "' . $associationName . '" does not exist for ' . get_class($this));
+		}
 	}
 	
 	/**
@@ -264,9 +278,7 @@ abstract class Model {
 	
 	function mergeAttribute($var, $val)
 	{
-		if (!isset($this->attributes[$var])) {
-			$this->attributes[$var] = array();
-		} elseif (!is_array($this->attributes[$var])) {
+		if ((!isset($this->attributes[$var])) || (!is_array($this->attributes[$var]))) {
 			return $this->setAttribute($var, $val);
 		}
 		return $this->setAttribute($var, array_merge($this->attributes[$var], (array) $val));

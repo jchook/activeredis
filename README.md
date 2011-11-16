@@ -54,11 +54,11 @@ The model classes can be extremely simple.
 // Create
 $human = Human::create(array(
 	'name' => 'Wes',
-	'age'  => 24
+	'age' => 24,
 ));
 
 // Retrieve
-$human = Human::find($id);
+$human = Human::find(1);
 
 // Update
 $human->name = 'Wesley';
