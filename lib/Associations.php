@@ -29,7 +29,8 @@ abstract class Association
 		
 		// Default name
 		if (!$this->name) {
-			$this->name = lcfirst(array_pop(explode('\\', $this->rightClass)));
+			$pieces = explode('\\', $this->rightClass);
+			$this->name = lcfirst(array_pop($pieces));
 			if ($this::$poly) {
 				$this->name = Inflector::pluralize($this->name);
 			}

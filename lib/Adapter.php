@@ -2,8 +2,8 @@
 
 namespace ActiveRedis;
 
-class Adapter {
-	
+class Adapter 
+{	
 	public $map;
 	public $db;
 	

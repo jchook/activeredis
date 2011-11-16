@@ -77,11 +77,11 @@ abstract class Model {
 			$association->associate($this, $val);
 			
 			// Store the association for DeepSave, etc
-			// if ($association::$poly) {
-			// 	$this->associated[$var][] = $val;
-			// } else {
+			if ($association::$poly) {
+				$this->associated[$var][] = $val;
+			} else {
 				$this->associated[$var] = $val;
-			// }
+			}
 			
 			// Return value of __set is ignored by PHP
 			return $val;
@@ -115,6 +115,7 @@ abstract class Model {
 					'name' => static::$table ?: basename(strtr(get_called_class(), "\\", '/')),
 					'model' => get_called_class(),
 					'callbacks' => static::$callbacks ?: array(),
+					'behaviors' => static::$behaviors ?: array(),
 					'primaryKey' => static::$primaryKey ?: 'id',
 					'associations' => static::$associations ?: array(),
 				), (array) static::$table));
@@ -226,7 +227,7 @@ abstract class Model {
 		if (isset($this->attributes[$var])) {
 			return $this->attributes[$var];
 		}
-		Log::notice('Undefined attribute ' . $var . ' in ' . $this);
+		Log::notice('Undefined attribute ' . $var . ' in ' . get_class($this));
 	}
 	
 	static function foreignKey() {
@@ -236,11 +237,13 @@ abstract class Model {
 		return static::$foreignKey;
 	}
 	
-	static function primaryKey() {
+	static function primaryKey() 
+	{
 		return static::$primaryKey ?: 'id';
 	}
 	
-	function primaryKeyValue($setValue = false) {
+	function primaryKeyValue($setValue = false) 
+	{
 		if ($setValue === false) {
 			return $this->getAttribute($this->primaryKey());
 		} else {
@@ -310,7 +313,7 @@ abstract class Model {
 	
 	function toArray() 
 	{
-		return $this->attributes;
+		return (array) $this->attributes;
 		
 		// User-defined allowed in-row attributes
 		if ($this->attributes) {

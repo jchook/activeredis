@@ -12,7 +12,8 @@ class Table {
 	public $separator = ':';
 	public $associations;
 	
-	function __construct(array $inject = null)  {
+	function __construct(array $inject = null)  
+	{
 		if ($inject)
 			foreach ($inject as $var => $val)
 				$this->$var = $val;
@@ -20,13 +21,16 @@ class Table {
 		Log::debug('Table loaded');
 		
 		$this->buildAssociations();
+		$this->buildBehaviors();
 	}
 	
-	static function db() {
+	static function db() 
+	{
 		return Database::instance();
 	}
 	
-	function bind($callbackName, $callback) {
+	function bind($callbackName, $callback) 
+	{
 		$this->callbacks[$callbackName][] = $callback;
 		return $this;
 	}
@@ -38,13 +42,16 @@ class Table {
 		
 		if ($callbacks) 
 		{	
-			Log::debug($this->model . ' triggering ' . count($callbacks) . ' callbacks for ' . $callbackName);
+			Log::debug($this->model . ' start triggering ' . count($callbacks) . ' callbacks for ' . $callbackName);
 			
-			foreach ($callbacks as $callback) {
+			foreach ($callbacks as $index => $callback) {
+				Log::debug($this->model . ' --> ' . $callbackName . ' ' . $index . ' : ' . $callback);
 				if (($result = call_user_func_array($callback, $args)) === false) {
 					return false;
 				}
 			}
+			
+			Log::debug($this->model . ' done triggering ' . count($callbacks) . ' callbacks for ' . $callbackName);
 		}
 		
 		return $result;

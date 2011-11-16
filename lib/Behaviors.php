@@ -44,8 +44,14 @@ class DeepSave extends Behavior
 	static function beforeSave($model)
 	{
 		if ($associated = $model->associated()) {
-			foreach ($associated as $associatedModel) {
-				$associatedModel->save();
+			foreach ($associated as $associatedModels) {
+				$associatedModels = (array) $associatedModels;
+				foreach ($associatedModels as $associatedModel) {
+					if (!is_object($associatedModel)) {
+						throw new Exception(__CLASS__ . ' expects associated models to be objects. ' . $associatedModel);
+					}
+					$associatedModel->save();
+				}
 			}
 		}
 	}
