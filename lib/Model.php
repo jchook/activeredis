@@ -69,25 +69,26 @@ abstract class Model {
 		}
 		
 		// Associations
-		if (($val instanceof Model) && ($association = $this->table->association($var))) {
+		if (($val instanceof Model) && ($association = $this->table()->association($var))) {
+			
 			Log::debug(get_class($this) . '::' . __FUNCTION__ . "($var) is an association => " . get_class($association));
 			
 			// Associate the models
 			$association->associate($this, $val);
 			
 			// Store the association for DeepSave, etc
-			if ($association::$poly) {
-				$this->associated[$var][] = $val;
-			} else {
+			// if ($association::$poly) {
+			// 	$this->associated[$var][] = $val;
+			// } else {
 				$this->associated[$var] = $val;
-			}
+			// }
 			
 			// Return value of __set is ignored by PHP
-			return;
+			return $val;
 		}
 		
-		return $this->setAttribute($var, $val);
-	}	
+		return $this->mergeAttribute($var, $val);
+	}
 	
 	public static function bind($callbackName, $callback) {
 		return static::table()->bind($callbackName, $callback);
@@ -192,6 +193,12 @@ abstract class Model {
 		}
 	}
 	
+	function addAttribute($var, $val)
+	{
+		$this->attributes = (array) $this->attributes;
+		return $this->mergeAttribute($var, $var);
+	}
+	
 	function mergeAttribute($var, $val)
 	{
 		if (!isset($this->attributes[$var])) {
@@ -199,7 +206,7 @@ abstract class Model {
 		} elseif (!is_array($this->attributes[$var])) {
 			return $this->setAttribute($var, $val);
 		}
-		return $this->setAttribute($var, array_merge($this->attributes[$var], (array) $val);
+		return $this->setAttribute($var, array_merge($this->attributes[$var], (array) $val));
 	}
 	
 	function setAttributes($attributes) {
@@ -209,15 +216,15 @@ abstract class Model {
 	}
 	
 	function setAttribute($var, $val) {
-		if (!isset($this->$var) || ($this->$var !== $val)) {
+		if (!isset($this->attributes[$var]) || ($this->attributes[$var] !== $val)) {
 			$this->isDirty[$var] = true;
 		}
-		return $this->$var = $val;
+		return $this->attributes[$var] = $val;
 	}
 	
 	function getAttribute($var) {
-		if (isset($this->$var)) {
-			return $this->$var;
+		if (isset($this->attributes[$var])) {
+			return $this->attributes[$var];
 		}
 		Log::notice('Undefined attribute ' . $var . ' in ' . $this);
 	}
@@ -301,6 +308,8 @@ abstract class Model {
 	
 	function toArray() 
 	{
+		return $this->attributes;
+		
 		// User-defined allowed in-row attributes
 		if ($this->attributes) {
 			$allowed = array_keys($this->attributes);

@@ -23,10 +23,19 @@ namespace ActiveRedis {
 		return \get_class_vars($class);
 	}
 	
-}
-
-namespace {
-
+	function array_flatten(array $array) 
+	{
+		$i = 0;
+		foreach ($array as $element) {
+			if (is_array($element)) {
+				array_splice($array, $i, 1, $element);
+			} else {
+				$i++;
+			}
+		}
+		return $array;
+	}
+	
 }
 
 ?>

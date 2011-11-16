@@ -1,5 +1,8 @@
 <?php
 
+// Logging :]
+include __DIR__ . '/lib/Log.php';
+
 // Register the Autoloader
 include __DIR__ . '/lib/Autoload.php';
 ActiveRedis\Autoload::register();

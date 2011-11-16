@@ -4,7 +4,7 @@ namespace ActiveRedis;
 
 class Log {
 	
-	public static $function = 'static::log';
+	public static $function = 'ActiveRedis\Log::log';
 	public static $prefixes = array(__NAMESPACE__);
 	public static $passthru;
 	
