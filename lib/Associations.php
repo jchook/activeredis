@@ -28,10 +28,21 @@ abstract class Association
 		}
 		
 		// Default name
-		$this->name or $this->name = lcfirst(array_pop(explode('\\', get_class($this))));
+		if (!$this->name) {
+			$this->name = lcfirst(array_pop(explode('\\', $this->rightClass)));
+			if ($this::$poly) {
+				$this->name = Inflector::pluralize($this->name);
+			}
+		}
 		
 		// Default foreign key
-		$this->foreignKey or $this->foreignKey = $this->name . '_' . $rightClass::primaryKey();
+		if (!$this->foreignKey) { 
+			if ($this::$poly) {
+				$this->foreignKey = Inflector::singularize($this->name) . '_ids';
+			} else {
+				$this->foreignKey = $this->name . '_id';
+			}
+		}
 	}
 	
 	/**
@@ -60,12 +71,8 @@ abstract class Association
 	/**
 	 * Returned by the left model when a user accesses the association
 	 */
-	function &delegate($left = null) {
-		if (!$left && !$this->left) {
-			throw new Exception('Cannot produce associated delegate for ' . $this->leftClass . '->' . $this->name . ' because no model object was given.');
-		}
-		$this->left = $left;
-		return $this;
+	function delegate($left = null) {
+		return $this->associated($left);
 	}
 }
 
@@ -99,6 +106,8 @@ class BelongsTo extends HasOne
 
 class HasMany extends Association 
 {
+	static $poly = true;
+	
 	function attach(Table $table) {
 		$table->bind('beforeDelete', array($this, 'beforeDelete'));
 	}

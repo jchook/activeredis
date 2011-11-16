@@ -8,6 +8,7 @@ class Table {
 	public $model; // class name
 	public $database; // name
 	public $callbacks;
+	public $behaviors;
 	public $separator = ':';
 	public $associations;
 	
@@ -69,6 +70,27 @@ class Table {
 			}
 		}
 		Log::warning('Class ' . $basename . ' could not be resolved. Attempted ' . json_encode($attempts));
+	}
+	
+	function buildBehaviors($behaviors = null)
+	{
+		$behaviors = (array) ($behaviors ?: $this->behaviors);
+		
+		foreach ($behaviors as $id => $val)
+		{
+			if (is_string($id)) {
+				$behavior = $id;
+				$options = $val;
+			} else {
+				$behavior = $val;
+				$options = null;
+			}
+			if (!($behaviorClass = $this->findClass($behavior, array(get_namespace($this->model), __NAMESPACE__)))) {
+				throw new Exception($this->model . ' table is unable to locate behavior ' . $behavior);
+			}
+			
+			$this->behaviors[$behavior] = new $behaviorClass($this, $options);
+		}
 	}
 	
 	function buildAssociations($associations = null) 

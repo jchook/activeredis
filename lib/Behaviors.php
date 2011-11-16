@@ -4,12 +4,26 @@ namespace ActiveRedis;
 
 abstract class Behavior 
 {
+	function __construct(Table $table, $options)
+	{
+		$this->attach($table);
+		$this->extend($options);
+	}
+	
+	function extend($options)
+	{
+		if (is_array($options))
+			foreach ($this->options as $option => $value)
+				if (is_string($option))
+					$this->$option = $value;
+	}
+	
 	abstract function attach(Table $table);
 }
 
 class AutoTimestamp extends Behavior
 {
-	public static function attach(Table $table)
+	public function attach(Table $table)
 	{
 		$table->bind('beforeInsert', function($model){
 			$model->created_at = time();
@@ -24,14 +38,16 @@ class DeepSave extends Behavior
 {
 	function attach(Table $table) 
 	{
-		$table->bind('beforeInsert', function($model) {
-			
-		});
+		$table->bind('beforeSave', __CLASS__ . '::beforeSave');
 	}
 	
-	function beforeSave($model) 
+	static function beforeSave($model)
 	{
-		
+		if ($associated = $model->associated()) {
+			foreach ($associated as $associatedModel) {
+				$associatedModel->save();
+			}
+		}
 	}
 }
 

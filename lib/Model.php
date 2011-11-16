@@ -6,7 +6,6 @@ abstract class Model {
 	
 	protected $associated;
 	protected $attributes;
-	protected $attribute; // reserved!
 	protected $isDirty;
 	protected $isNew;
 	
@@ -21,7 +20,7 @@ abstract class Model {
 	protected static $callbacks;
 	
 	// Behaviors
-	protected static $behaviors;
+	protected static $behaviors = array('DeepSave');
 	
 	// Associations
 	protected static $associations;
@@ -34,53 +33,60 @@ abstract class Model {
 		$this->isNew = $isNew;
 		
 		if (is_array($id)) {
-			$this->attributes = $id;
+			$this->setAttributes($id);
 		}
 	}
 	
-	function __get($var) 
+	function &__get($var) 
 	{
-		// Dynamic getters first
+		// Dynamic getters
 		if (method_exists($this, $method = 'get' . ucfirst($var))) {
+			$result = $this->$method();
+			return $result;
+		}
+		
+		// Associations
+		if ($association = $this->table()->association($var)) {
+			Log::debug(get_class($this) . '::' . __FUNCTION__ . "($var) is an association => " . get_class($association));
+			if (!isset($this->assicated[$var])) {
+				$this->associated[$var] = $association->delegate($this);
+			}
+			return $this->associated[$var];
+		}
+		
+		// Attributes
+		if (!isset($this->attributes[$var])) {
+			$this->attributes[$var] = null;
+		}
+		return $this->attributes[$var];
+	}
+	
+	function __set($var, $val)
+	{
+		// Dynamic setters first
+		if (method_exists($this, $method = 'set' . ucfirst($var))) {
 			return $this->$method();
 		}
 		
-		if ($association = $this->table()->association($var)) {
+		// Associations
+		if (($val instanceof Model) && ($association = $this->table->association($var))) {
 			Log::debug(get_class($this) . '::' . __FUNCTION__ . "($var) is an association => " . get_class($association));
-			return $association->delegate($this);
-		}
-		
-		// Attempt to get the attribute
-		return $this->getAttribute($var);
-	}
-	
-	function __set($var, $val) 
-	{
-		Log::debug(__CLASS__ . '::' . __FUNCTION__ . "($var, $val);");
-		
-		// First check for a setter
-		if (method_exists($this, $method = 'set' . ucfirst($var))) {
-			return $this->$method($val);
-		}
-		
-		// Is it an association?
-		if ($var instanceof Model && ($association = $this->table()->association($var))) {
 			
 			// Associate the models
-			$association->associate($this, $var);
+			$association->associate($this, $val);
 			
-			// Now we have to store the association in case you want it later
+			// Store the association for DeepSave, etc
 			if ($association::$poly) {
 				$this->associated[$var][] = $val;
 			} else {
 				$this->associated[$var] = $val;
 			}
 			
-			return; // return value is ignored by PHP
+			// Return value of __set is ignored by PHP
+			return;
 		}
 		
-		// If nothing else, just set the attribute :]
-		$this->setAttribute($var, $val);
+		return $this->setAttribute($var, $val);
 	}	
 	
 	public static function bind($callbackName, $callback) {
@@ -186,6 +192,16 @@ abstract class Model {
 		}
 	}
 	
+	function mergeAttribute($var, $val)
+	{
+		if (!isset($this->attributes[$var])) {
+			$this->attributes[$var] = array();
+		} elseif (!is_array($this->attributes[$var])) {
+			return $this->setAttribute($var, $val);
+		}
+		return $this->setAttribute($var, array_merge($this->attributes[$var], (array) $val);
+	}
+	
 	function setAttributes($attributes) {
 		foreach ($attributes as $var => $val) {
 			$this->setAttribute($var, $val);
@@ -193,22 +209,22 @@ abstract class Model {
 	}
 	
 	function setAttribute($var, $val) {
-		if (!isset($this->attributes[$var]) || ($this->attributes[$var] !== $val)) {
+		if (!isset($this->$var) || ($this->$var !== $val)) {
 			$this->isDirty[$var] = true;
 		}
-		return $this->attributes[$var] = $val;
+		return $this->$var = $val;
 	}
 	
 	function getAttribute($var) {
-		if (isset($this->attributes[$var])) {
-			return $this->attributes[$var];
+		if (isset($this->$var)) {
+			return $this->$var;
 		}
 		Log::notice('Undefined attribute ' . $var . ' in ' . $this);
 	}
 	
 	static function foreignKey() {
 		if (!static::$foreignKey) {
-			static::$foreignKey = lcfirst(array_pop(explode('\\', get_called_class()))) . '_' . ($leftClass::$primaryKey ?: 'id')
+			static::$foreignKey = lcfirst(array_pop(explode('\\', get_called_class()))) . '_' . ($leftClass::$primaryKey ?: 'id');
 		}
 		return static::$foreignKey;
 	}
@@ -283,8 +299,29 @@ abstract class Model {
 		}
 	}
 	
-	function toArray() {
-		return (array) $this->attributes;
+	function toArray() 
+	{
+		// User-defined allowed in-row attributes
+		if ($this->attributes) {
+			$allowed = array_keys($this->attributes);
+		}
+		
+		// Generate allowed attributes automatically 
+		else {
+			
+			// Start with all public object variables
+			$allowed = get_public_object_vars($this);
+			
+			// Remove associations, but put their foreignKey in its place
+			$assocations = $this->table()->associations();
+			$allowed = array_diff_key($allowed, $associations);
+			foreach ($associations as $association) {
+				$allowed[$association->foreignKey] = 1;
+			}
+		}
+		
+		// Return the array!
+		return array_intersect_key(get_object_vars($this), $allowed);
 	}
 	
 	function toString() {
