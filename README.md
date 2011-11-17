@@ -6,17 +6,15 @@ ActiveRedis is a PHP 5.3+ library that brings relational model abstraction to [R
 * Lightweight
 * Easily adapts to any PHP Redis interface
 
-
 ## Development
 
 ActiveRedis is currently in its infancy.
 
-However, it is being actively developed. Feel free to fork & join in the fun. There are many planned features, including:
+However, it is being actively developed. Feel free to fork & join in the fun. Some planned features:
 
-* Relationships
-* Indexing
-* Dynamic getters/setters
-* Better connection management
+* Model Associations (in progress)
+* Indexing (next in the queue)
+* Bubbling events
 
 ## Installation
 

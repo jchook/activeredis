@@ -15,13 +15,7 @@ class User extends ActiveRedis\Model {
 	);
 }
 
-$user = new User;
-
-// $user->projects = new Project(array('name' => 'CowFight'));
-// $user->projects = new Project(array('name' => 'ActiveRedis'));
-
-// $user->test = array('whatever');
-
-$user->save();
+$user = User::create();
+$user->projects[] = Project::create();
 
 ?>

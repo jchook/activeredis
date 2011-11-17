@@ -33,17 +33,17 @@ class Table {
 			if (!class_exists($class)) {
 				throw new Exception('Cannot create table for non-existent model class: ' . $class);
 			}
-			if (is_string($class::$table)) {
-				$class::$table = array('name' => static::$table);
+			if (!is_array($class::$table)) {
+				$class::$table = array('name' => $class::$table);
 			}
 			static::$instances[$class] = new Table(array_merge(array(
-				'name' => $class::$table ?: basename(strtr($class, "\\", '/')),
+				'name' => basename(strtr($class, "\\", '/')),
 				'model' => $class,
 				'callbacks' => $class::$callbacks ?: array(),
 				'behaviors' => $class::$behaviors ?: array(),
 				'primaryKey' => $class::$primaryKey ?: 'id',
 				'associations' => $class::$associations ?: array(),
-			), (array) $class::$table));
+			), $class::$table));
 		}
 		return static::$instances[$class];
 	}
@@ -86,7 +86,7 @@ class Table {
 			Log::debug($this->model . ' table -> association(' . $throughName . ') found');
 			return $this->associations[$throughName];
 		}
-		Log::debug($this->model . ' table -> association(' . $throughName . ') does not exist ' . json_encode($this->associations));
+		Log::debug($this->model . ' table -> association(' . $throughName . ') does not exist');
 	}
 	
 	function associations() {
@@ -102,7 +102,7 @@ class Table {
 		$attempts = array();
 		foreach ($namespaces as $namespace) {
 			$className = $namespace . '\\' . $basename;
-			if (class_exists($className)) {
+			if (class_exists($className, false)) {
 				return $className;
 			} else {
 				$attempts[] = $className;
@@ -167,7 +167,7 @@ class Table {
 	}
 	
 	function key($subkeys = null)  {
-		return implode($this->separator, array_merge((array) $this->name, (array) $subkeys));
+		return implode($this->separator, array_flatten(array_merge((array) $this->name, (array) $subkeys)));
 	}
 	
 	function set($id, $value) {

@@ -25,12 +25,56 @@ class AutoTimestamp extends Behavior
 {
 	public function attach(Table $table)
 	{
-		$table->bind('beforeInsert', function($model){
-			$model->created_at = time();
-		});
-		$table->bind('beforeSave', function($model) {
-			$model->updated_at = time();
-		});
+		$table->bind('beforeInsert', __CLASS__ . '::beforeInsert');
+		$table->bind('beforeSave', __CLASS__ . '::beforeSave');
+	}
+	
+	static function beforeInsert($model)
+	{
+		$model->created_at = time();
+	}
+	
+	static function beforeSave($model)
+	{
+		$model->updated_at = time();
+	}
+}
+
+class AutoAssociate extends Behavior
+{
+	function attach(Table $table) 
+	{
+		$table->bind('beforeSave', array($this, 'beforeSave'));
+	}
+	
+	function beforeSave($model)
+	{
+		if (isset($this->done)) {
+			return;
+		}
+		
+		$this->done = true;
+		
+		if ($associations = $model->table()->associations()) 
+		{
+			foreach ($associations as $name => $association) 
+			{
+				if (isset($model->$name) && $model->$name) 
+				{
+					$associatedModels = is_array($model->$name) ? $model->$name : array($model->$name);
+					
+					foreach ($associatedModels as $associatedModel) 
+					{
+						if (!is_object($associatedModel)) 
+						{
+							throw new Exception(__CLASS__ . '::' . __FUNCTION__ . ' expects associated model ' . $name . ' to be an object. Received ' . var_export($associatedModel,1));
+						}
+						
+						$association->associate($model, $associatedModel);
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -38,29 +82,31 @@ class DeepSave extends Behavior
 {
 	function attach(Table $table) 
 	{
-		$table->bind('beforeSave', __CLASS__ . '::beforeSave');
+		$table->bind('afterSave', __CLASS__ . '::afterSave');
 	}
 	
-	static function beforeSave($model)
-	{
-		if ($associated = $model->associated()) 
+	static function afterSave($model)
+	{	
+		if ($associations = $model->table()->associations()) 
 		{
-			foreach ($associated as $associationName => $associatedModels) 
+			foreach ($associations as $name => $association) 
 			{
-				$associatedModels = (array) $associatedModels;
-				foreach ($associatedModels as $associatedModel) 
+				if (isset($model->$name) && $model->$name) 
 				{
-					if (!is_object($associatedModel)) 
-					{
-						throw new Exception(__CLASS__ . ' expects associated models to be objects. ' . $associatedModel);
-					}
+					$associatedModels = is_array($model->$name) ? $model->$name : array($model->$name);
 					
-					$associatedModel->save();
+					foreach ($associatedModels as $associatedModel) 
+					{
+						if (!is_object($associatedModel)) 
+						{
+							throw new Exception(__CLASS__ . '::' . __FUNCTION__ . ' expects associated model ' . $name . ' to be an object. Received ' . var_export($associatedModel,1));
+						}
+						
+						$associatedModel->save();
+					}
 				}
 			}
 		}
-		
-		Log::temp(var_export($associated, 1));
 	}
 }
 
