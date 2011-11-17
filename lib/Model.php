@@ -30,6 +30,9 @@ abstract class Model {
 	// For reference returns
 	public static $null;
 	
+	// For meta information
+	protected $meta;
+	
 	function __construct($id = null, $isNew = true) 
 	{	
 		$this->isNew = $isNew;
@@ -65,8 +68,6 @@ abstract class Model {
 		return $this->attributes[$var];
 	}
 	
-	
-	
 	function __set($var, $val)
 	{
 		// Dynamic Initialization
@@ -82,8 +83,23 @@ abstract class Model {
 			return $this->associated[$var] = $val;
 		}
 		
+		// Default is to set attributes
 		$this->isDirty[$var] = true;
 		return $this->attributes[$var] = $val;
+	}
+	
+	function __unset($var)
+	{
+		if (isset($this->attributes[$var])) {
+			unset($this->attributes[$var]);
+		} elseif (isset($this->associated[$var])) {
+			unset($this->associated[$var]);
+		}
+	}
+	
+	function __isset($var)
+	{
+		return isset($this->attributes[$var]) || isset($this->associated[$var]);
 	}
 	
 	
@@ -184,9 +200,26 @@ abstract class Model {
 		return json_encode($this->toArray());
 	}
 	
-	public function associated()
+	public function associated($name = null)
 	{
-		
+		if (is_null($name)) {
+			return $this->associated;
+		}
+		if ($name && isset($this->associated[$name])) {
+			return $this->associated[$name];
+		}
+	}
+	
+	public function meta($get, $set = null)
+	{
+		Log::vebug(get_class($this) . '::' . __FUNCTION__ . "($get, " . json_encode($set) . ")");
+		if (!is_null($set)) {
+			$this->meta[$get] = $set;
+			return $this->meta[$get];
+		}
+		if (isset($this->meta[$get])) {
+			return $this->meta[$get];
+		}
 	}
 	
 	/**
@@ -318,7 +351,7 @@ abstract class Model {
 		if ($isNew || $this->isDirty()) 
 		{
 			$this->trigger('beforeSave', array(&$this, $isNew));
-			if ($isNew) {
+			if ($this->isNew()) {
 				$result = $this->insert();
 			} else {
 				$result = $this->update();
@@ -334,8 +367,8 @@ abstract class Model {
 	protected function insert() 
 	{
 		if ($success = $this->table()->insert($this)) {
-			$this->isNew = false;
-			$this->isDirty = false;
+			// $this->isNew = false;
+			// $this->isDirty = false;
 			return $success;
 		}
 	}
@@ -346,7 +379,8 @@ abstract class Model {
 			throw new Exception('Cannot update new record');
 		}
 		if ($success = $this->table()->update($this)) {
-			$this->dirty = false;
+			// $this->dirty = false;
+			return $success;
 		}
 	}
 	

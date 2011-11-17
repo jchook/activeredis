@@ -18,6 +18,10 @@ class Inflector {
 		return $lowercaseFirst ? lcfirst($str) : $str;
 	}
 	
+	
+	/**
+	 * Code below borrowed from phpactiveredis.org
+	 */
 	private static $plural = array(
         '/(quiz)$/i'               => "$1zes",
         '/^(ox)$/i'                => "$1en",

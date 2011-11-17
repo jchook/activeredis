@@ -16,14 +16,21 @@ class Table {
 	
 	function __construct(array $inject = null)  
 	{
+		$build = array_flip(array('behaviors', 'associations'));
+		
 		if ($inject)
 			foreach ($inject as $var => $val)
-				$this->$var = $val;
+				if (is_string($var) && !isset($build[$var]))
+					$this->$var = $val;
 		
-		Log::debug('Table loaded');
+		if (isset($inject['associations'])) {
+			$this->buildAssociations($inject['associations']);
+		}
+		if (isset($inject['behaviors'])) {
+			$this->buildBehaviors($inject['behaviors']);
+		}
 		
-		$this->buildAssociations();
-		$this->buildBehaviors();
+		Log::debug($this->model . ' Table loaded');
 	}
 	
 	static function instance($class)
@@ -39,10 +46,10 @@ class Table {
 			static::$instances[$class] = new Table(array_merge(array(
 				'name' => basename(strtr($class, "\\", '/')),
 				'model' => $class,
-				'callbacks' => $class::$callbacks ?: array(),
-				'behaviors' => $class::$behaviors ?: array(),
-				'primaryKey' => $class::$primaryKey ?: 'id',
 				'associations' => $class::$associations ?: array(),
+				'behaviors' => $class::$behaviors ?: array(),
+				'callbacks' => $class::$callbacks ?: array(),
+				'primaryKey' => $class::$primaryKey ?: 'id',
 			), $class::$table));
 		}
 		return static::$instances[$class];
@@ -66,16 +73,16 @@ class Table {
 		
 		if ($callbacks) 
 		{	
-			Log::debug($this->model . ' start triggering ' . count($callbacks) . ' callbacks for ' . $callbackName);
+			Log::vebug($this->model . ' start triggering ' . count($callbacks) . ' callbacks for ' . $callbackName);
 			
 			foreach ($callbacks as $index => $callback) {
-				Log::debug($this->model . ' --> ' . $callbackName . ' ' . $index . ' : ' . $callback);
+				Log::vebug($this->model . ' --> ' . $callbackName . ' ' . $index . ' : ' . $callback);
 				if (($result = call_user_func_array($callback, $args)) === false) {
 					return false;
 				}
 			}
 			
-			Log::debug($this->model . ' done triggering ' . count($callbacks) . ' callbacks for ' . $callbackName);
+			Log::vebug($this->model . ' done triggering ' . count($callbacks) . ' callbacks for ' . $callbackName);
 		}
 		
 		return $result;
@@ -83,10 +90,10 @@ class Table {
 	
 	function association($throughName) {
 		if (isset($this->associations[$throughName])) {
-			Log::debug($this->model . ' table -> association(' . $throughName . ') found');
+			Log::vebug($this->model . ' Table association(' . $throughName . ') found');
 			return $this->associations[$throughName];
 		}
-		Log::debug($this->model . ' table -> association(' . $throughName . ') does not exist');
+		Log::vebug($this->model . ' Table association(' . $throughName . ') does not exist');
 	}
 	
 	function associations() {
@@ -111,57 +118,66 @@ class Table {
 		Log::warning('Class ' . $basename . ' could not be resolved. Attempted ' . json_encode($attempts));
 	}
 	
-	function buildBehaviors($behaviors = null)
+	function buildBehaviors($behaviors)
 	{
-		$behaviors = (array) ($behaviors ?: $this->behaviors);
-		
-		foreach ($behaviors as $id => $val)
-		{
-			if (is_string($id)) {
-				$behavior = $id;
-				$options = $val;
-			} else {
-				$behavior = $val;
-				$options = null;
-			}
-			if (!($behaviorClass = $this->findClass($behavior, array(get_namespace($this->model), __NAMESPACE__)))) {
-				throw new Exception($this->model . ' table is unable to locate behavior ' . $behavior);
-			}
+		if ($behaviors) 
+		{	
+			$behaviors = (array) $behaviors;
 			
-			$this->behaviors[$behavior] = new $behaviorClass($this, $options);
+			foreach ($behaviors as $id => $val)
+			{
+				if (is_string($id)) {
+					$behavior = $id;
+					$options = $val;
+				} else {
+					$behavior = $val;
+					$options = null;
+				}
+				if (!($behaviorClass = $this->findClass($behavior, array(get_namespace($this->model), __NAMESPACE__)))) {
+					throw new Exception($this->model . ' table is unable to locate behavior ' . $behavior);
+				}
 			
-			Log::debug($this->model . ' attached behavior ' . $behaviorClass);
+				$this->behaviors[$behavior] = new $behaviorClass($this, $options);
+			
+				Log::vebug($this->model . ' attached behavior ' . $behaviorClass);
+			}
 		}
 	}
 	
-	function buildAssociations($associations = null) 
+	function buildAssociations($associations) 
 	{
-		$associations = (array) ($associations ?: $this->associations);
-		
-		while($association = array_pop($associations)) 
-		{	
-			$options = null;
+		if ($associations) 
+		{
+			$associations = (array) $associations;
 			
-			if (is_array($association)) {
-				$options = $association;
-				$association = array_shift($options);
-			}
+			while($association = array_pop($associations)) 
+			{	
+				$options = null;
 			
-			if (is_string($association)) {
-				list($associationType, $associatedClass) = explode(' ', $association);
-				$associationType = $this->findClass($associationType, array(get_namespace($this->model), __NAMESPACE__));
-				$associatedClass = $this->findClass($associatedClass, get_namespace($this->model));
-				if ($associationType && $associatedClass) {
-					$association = new $associationType($this->model, $associatedClass, $options);
+				if (is_array($association)) {
+					$options = $association;
+					$association = array_shift($options);
 				}
-			}
 			
-			if (is_object($association) && method_exists($association, 'attach')) {
-				$association->attach($this);
-				$this->associations[$association->name] = $association;
-				Log::debug($this->name . ' associated with ' . $association->name);
-			} else {
-				throw new Exception('Invalid association ' . $this->model . ' ' . $association);
+				if (is_string($association)) {
+					list($associationType, $associatedClass) = explode(' ', $association);
+					$associationType = $this->findClass($associationType, array(get_namespace($this->model), __NAMESPACE__));
+					if ($associationType::$poly) {
+						$associatedClass = Inflector::singularize($associatedClass);
+					}
+					$associatedClass = $this->findClass($associatedClass, get_namespace($this->model));
+					if ($associationType && $associatedClass) {
+						$association = new $associationType($this->model, $associatedClass, $options);
+					}
+				}
+			
+				if (is_object($association) && method_exists($association, 'attach')) {
+					$association->attach($this);
+					$this->associations[$association->name] = $association;
+					Log::debug($this->name . ' associated with ' . $association->name);
+				} else {
+					throw new Exception('Invalid association ' . $this->model . ' ' . $association);
+				}
 			}
 		}
 	}

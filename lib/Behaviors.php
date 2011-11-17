@@ -25,17 +25,15 @@ class AutoTimestamp extends Behavior
 {
 	public function attach(Table $table)
 	{
-		$table->bind('beforeInsert', __CLASS__ . '::beforeInsert');
 		$table->bind('beforeSave', __CLASS__ . '::beforeSave');
-	}
-	
-	static function beforeInsert($model)
-	{
-		$model->created_at = time();
 	}
 	
 	static function beforeSave($model)
 	{
+		if ($model->isNew()) 
+		{
+			$model->created_at = time();
+		}
 		$model->updated_at = time();
 	}
 }
@@ -82,27 +80,44 @@ class DeepSave extends Behavior
 {
 	function attach(Table $table) 
 	{
+		$table->bind('beforeSave', __CLASS__ . '::beforeSave');
 		$table->bind('afterSave', __CLASS__ . '::afterSave');
 	}
 	
-	static function afterSave($model)
-	{	
-		if ($associations = $model->table()->associations()) 
+	static function afterSave(&$model)
+	{
+		$model->meta('isDeepSaving', false);
+	}
+	
+	static function beforeSave(&$model)
+	{
+		// Prevent recursion
+		if (!$model->meta('isDeepSaving')) 
 		{
-			foreach ($associations as $name => $association) 
+			$model->meta('isDeepSaving', true);
+			
+			if ($associations = $model->table()->associations()) 
 			{
-				if (isset($model->$name) && $model->$name) 
+				Log::info(get_class($model) . ' is deep-saving ' . json_encode(array_keys($associations)));
+				foreach ($associations as $name => $association) 
 				{
-					$associatedModels = is_array($model->$name) ? $model->$name : array($model->$name);
-					
-					foreach ($associatedModels as $associatedModel) 
+					if ($name && is_string($name) && ($associatedModels = $model->associated($name))) 
 					{
-						if (!is_object($associatedModel)) 
-						{
-							throw new Exception(__CLASS__ . '::' . __FUNCTION__ . ' expects associated model ' . $name . ' to be an object. Received ' . var_export($associatedModel,1));
+						if (!is_array($associatedModels)) {
+							$associatedModels = array($associatedModels);
 						}
+						foreach ($associatedModels as $associatedModel) 
+						{
+							if (!is_object($associatedModel)) 
+							{
+								if (is_array($associatedModel)) {
+									print_r(array_keys($associatedModel));
+								}
+								throw new Exception(__CLASS__ . '::' . __FUNCTION__ . ' expects associated model ' . $name . ' to be an object. Receivied ' . $associatedModel);
+							}
 						
-						$associatedModel->save();
+							$associatedModel->save();
+						}
 					}
 				}
 			}
