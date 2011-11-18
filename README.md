@@ -6,7 +6,7 @@
 * Lightweight
 * Easily adapts to any PHP Redis interface, including [Predis](https://github.com/nrk/predis) and [PhpRedis](https://github.com/nicolasff/phpredis)
 
-[ActiveRedis](https://github.com/jchook/activeredis) synthesizes a new implementation of the [Active record pattern](http://en.wikipedia.org/wiki/Active_record_pattern), borrowing good features from other libraries, but incorporating the simplicity of [Redis](http://redis.io/).
+ActiveRedis synthesizes a new implementation of the [Active record pattern](http://en.wikipedia.org/wiki/Active_record_pattern), borrowing good features from other libraries, but incorporating the simplicity of Redis.
 
 ## Development
 
