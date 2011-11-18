@@ -12,7 +12,7 @@ abstract class Model {
 	static $primaryKey = 'id';
 	static $keySeparator = ':';
 	static $table = array(
-		'behaviors' => array('AutoAssociate', 'AutoTimestamp', 'DeepSave'),
+		'behaviors' => array('AutoAssociate', 'AutoTimestamp', 'DeepSave', 'SaveIndexes'),
 	);
 	
 	// Not yet supported
@@ -42,6 +42,16 @@ abstract class Model {
 		}
 	}
 	
+	function __call($fn, $args)
+	{
+		if ($association = $this->table()->association($fn)) {
+			return $association->delegate($this);
+		}
+	}
+	
+	/**
+	 * Dynamic get attribute / association
+	 */
 	function &__get($var)
 	{
 		// Dynamic Initialization
@@ -65,9 +75,13 @@ abstract class Model {
 			$this->attributes[$var] = null;
 		}
 		
+		// Returned by reference
 		return $this->attributes[$var];
 	}
 	
+	/**
+	 * Dynamic set attribute / association
+	 */
 	function __set($var, $val)
 	{
 		// Dynamic Initialization
@@ -88,6 +102,9 @@ abstract class Model {
 		return $this->attributes[$var] = $val;
 	}
 	
+	/**
+	 * Support unset for attributes / associations
+	 */
 	function __unset($var)
 	{
 		if (isset($this->attributes[$var])) {
@@ -97,11 +114,13 @@ abstract class Model {
 		}
 	}
 	
+	/**
+	 * Support isset for attributes / associations
+	 */
 	function __isset($var)
 	{
 		return isset($this->attributes[$var]) || isset($this->associated[$var]);
 	}
-	
 	
 	/**
 	 * Bind a callback to a particular event name
@@ -135,7 +154,7 @@ abstract class Model {
 	 * 
 	 * @return Adapter
 	 */
-	static function db() 
+	public static function db() 
 	{
 		return static::table()->db();
 	}
@@ -145,7 +164,7 @@ abstract class Model {
 	 * 
 	 * @return Table
 	 */
-	static function table() 
+	public static function table() 
 	{
 		return Table::instance(get_called_class());
 	}
@@ -154,7 +173,7 @@ abstract class Model {
 	 * Create a new instance of this model
 	 * Automatically saves to the database
 	 */
-	static function create($config = null) 
+	public static function create($config = null) 
 	{
 		$model = new static($config);
 		$model->save();
@@ -167,7 +186,7 @@ abstract class Model {
 	 * @param mixed $id
 	 * @return Model
 	 */
-	static function find($id) 
+	public static function find($id) 
 	{
 		// Instantiate new class
 		$class = get_called_class();
@@ -185,7 +204,7 @@ abstract class Model {
 	 * @param array $data
 	 * @return Model
 	 */
-	static function unserialize($data) 
+	public static function unserialize($data) 
 	{
 		return new static(json_decode($data), false);
 	}
@@ -200,26 +219,61 @@ abstract class Model {
 		return json_encode($this->toArray());
 	}
 	
-	public function associated($name = null)
+	/**
+	 * Retrieve associated model(s) by name
+	 * Returns all associated models if no name is given
+	 * 
+	 * @param mixed $name optional
+	 * @return mixed by reference
+	 */
+	public function &associated($name = null)
 	{
+		if ($name){
+			if (isset($this->associated[$name])) {
+				return $this->associated[$name];
+			}
+			if ($association = $this->table()->association($name)) {
+				$args = func_get_args();
+				$args[0] = $this;
+				$this->associated[$name] = call_user_func_array(array($association, 'associated'), $args);
+				return $this->associated[$name];
+			}
+			$this->associated[$name] = null;
+			return $this->associated[$name];
+		}
 		if (is_null($name)) {
 			return $this->associated;
 		}
-		if ($name && isset($this->associated[$name])) {
-			return $this->associated[$name];
-		}
+		throw new Exception('Invalid use of ' . get_class($this) . '::associated()');
 	}
 	
-	public function meta($get, $set = null)
+	/**
+	 * Check to see if an association has already been instantiated
+	 */
+	public function isAssociated($name = null)
 	{
-		Log::vebug(get_class($this) . '::' . __FUNCTION__ . "($get, " . json_encode($set) . ")");
+		return isset($this->associated[$name]);
+	}
+	
+	/**
+	 * Get or set meta information about this model
+	 * that will NOT be saved to the database
+	 * 
+	 * @param string $key
+	 * @param mixed $set optional
+	 * @return mixed by reference
+	 */
+	public function &meta($key, $set = null)
+	{
+		Log::vebug(get_class($this) . '::' . __FUNCTION__ . "($key, " . json_encode($set) . ")");
 		if (!is_null($set)) {
-			$this->meta[$get] = $set;
-			return $this->meta[$get];
+			$this->meta[$key] = $set;
+			return $this->meta[$key];
 		}
-		if (isset($this->meta[$get])) {
-			return $this->meta[$get];
+		if (!isset($this->meta[$key])) {
+			$this->meta[$key] = null;
 		}
+		return $this->meta[$key];
 	}
 	
 	/**
@@ -229,7 +283,7 @@ abstract class Model {
 	 * @param mixed $set optional
 	 * @return mixed
 	 */
-	function attr($get, $set = null) 
+	public function attr($get, $set = null) 
 	{
 		if (!is_null($set)) {
 			return $this->setAttribute($get, $set);
@@ -237,45 +291,50 @@ abstract class Model {
 		return $this->getAttribute($get);
 	}
 	
-	function getAssociated($name) 
-	{
-		if (isset($this->$name)) {
-			return $this->$name;
-		}
-	}
-	
-	function getAttributes($list) {
+	/**
+	 * Returns an associative array of name => value pairs for a set
+	 * of attributes. If you do not specify a default, non-existent 
+	 * attributes will be excluded from the returned array.
+	 * 
+	 * EX:
+	 * $model->c = 'hello';
+	 * $model->getAttributes(array('a', 'b' => null, 'c' => 'default'));
+	 * // yields array('b' => null, 'c' => 'hello')
+	 * 
+	 * @param array $list
+	 * @return array
+	 */
+	public function getAttributes($list) {
 		$result = array();
 		foreach ($list as $id => $val) {
 			if ($id && is_string($id)) {
 				$result[$id] = $this->getAttribute($id) ?: $val;
-			} else {
+			} elseif ($this->hasAttribute($val)) {
 				$result[$val] = $this->getAttribute($val);
 			}
 		}
 	}
 	
-	function addAttribute($var, $val)
-	{
-		$this->attributes[$var] = isset($this->attributes[$var]) ? (array) $this->attributes[$var] : array();
-		return $this->mergeAttribute($var, $val);
-	}
-	
-	function mergeAttribute($var, $val)
-	{
-		if ((!isset($this->attributes[$var])) || (!is_array($this->attributes[$var]))) {
-			return $this->setAttribute($var, $val);
-		}
-		return $this->setAttribute($var, array_merge($this->attributes[$var], (array) $val));
-	}
-	
-	function setAttributes($attributes) {
+	/**
+	 * Set attributes via name => $value pairs
+	 * 
+	 * @param array $attributes
+	 * @return null
+	 */
+	public function setAttributes($attributes) {
 		foreach ($attributes as $var => $val) {
 			$this->setAttribute($var, $val);
 		}
 	}
 	
-	function setAttribute($var, $val) 
+	/**
+	 * Set a single attribute value by name
+	 * 
+	 * @param string $var
+	 * @param mixed $val
+	 * @return mixed $val
+	 */
+	public function setAttribute($var, $val) 
 	{
 		if (!isset($this->attributes[$var]) || ($this->attributes[$var] !== $val)) {
 			$this->isDirty[$var] = true;
@@ -283,6 +342,12 @@ abstract class Model {
 		return $this->attributes[$var] = $val;
 	}
 	
+	/**
+	 * Get a single attribute by name
+	 * 
+	 * @param string $var
+	 * @return mixed null if the attribute does not exist
+	 */
 	function getAttribute($var) 
 	{
 		if (isset($this->attributes[$var])) {
@@ -291,19 +356,34 @@ abstract class Model {
 		Log::notice('Undefined attribute ' . $var . ' in ' . get_class($this));
 	}
 	
-	static function foreignKey() 
+	/**
+	 * True if the attribute named exists
+	 * 
+	 * @param string $var name
+	 * @return bool
+	 */
+	function hasAttribute($var)
 	{
-		if (!static::$foreignKey) {
-			static::$foreignKey = lcfirst(array_pop(explode('\\', get_called_class()))) . '_' . ($leftClass::$primaryKey ?: 'id');
-		}
-		return static::$foreignKey;
+		return isset($this->attributes[$var]);
 	}
 	
+	/**
+	 * Return the primary key for this model
+	 * 
+	 * @return string 'id' by default
+	 */
 	static function primaryKey() 
 	{
 		return static::$primaryKey ?: 'id';
 	}
 	
+	/**
+	 * Get OR Set OR Init the VALUE of the primary key of this model
+	 * !!! NOTE: If a value is not already given, one is created !!!
+	 * 
+	 * @param mixed $setValue optional
+	 * @return mixed
+	 */
 	function primaryKeyValue($setValue = false) 
 	{
 		if ($setValue === false) {
@@ -315,31 +395,63 @@ abstract class Model {
 		return $this->setAttribute($this->primaryKey(), $setValue);
 	}
 	
+	/**
+	 * Shorthand dynamic getter for primaryKeyValue. 
+	 * use $this->id
+	 */
 	function getId() {
 		return $this->primaryKeyValue();
 	}
 	
+	/**
+	 * Get the storage key for this model
+	 */
 	function key(/* polymorphic */) 
 	{
 		$keys = array_flatten(array($this->primaryKeyValue(), func_get_args()));
 		return $this->table()->key($keys);
 	}
 	
-	function isDirty($var = null) {
-		if ($var) {
-			return isset($this->isDirty[$var]) && $this->isDirty[$var];
+	/**
+	 * True if the attribute named has (potentially) been modified
+	 * since it was retrieved from the database. If no attribute name
+	 * is supplied, this function returns this->isDirty exactly
+	 * 
+	 * @param mixed $name optional
+	 * @return mixed
+	 */
+	function isDirty($name = null) {
+		if ($name) {
+			return isset($this->isDirty[$name]) && $this->isDirty[$name];
 		}
 		return $this->isDirty;
 	}
 	
+	/**
+	 * True if the model has not been saved to the database yet
+	 * 
+	 * @return bool
+	 */
 	function isNew() {
 		return $this->isNew;
 	}
 	
+	/**
+	 * Remove this model from the database
+	 */
 	function delete() {
-		return $this->db()->rem($this->key());
+		if ($this->db()->rem($this->key())) {
+			$this->isNew = true;
+			return true;
+		}
 	}
 	
+	/**
+	 * Save this model to the database
+	 * 
+	 * @param bool $validate before saving
+	 * @return mixed $success
+	 */
 	function save($validate = true) 
 	{
 		if ($validate) {
@@ -364,6 +476,9 @@ abstract class Model {
 		return true; // record is already up-to-date
 	}
 	
+	/**
+	 * Insert a new row into the table for this model
+	 */
 	protected function insert() 
 	{
 		if ($success = $this->table()->insert($this)) {
@@ -373,6 +488,9 @@ abstract class Model {
 		}
 	}
 	
+	/**
+	 * Update the table row for this model
+	 */
 	protected function update() 
 	{
 		if ($this->isNew()) {
@@ -384,46 +502,34 @@ abstract class Model {
 		}
 	}
 	
+	/**
+	 * Get a simple array representation of this model
+	 * 
+	 * @return array
+	 */
 	function toArray() 
 	{
 		return (array) $this->attributes;
-		
-		// User-defined allowed in-row attributes
-		if ($this->attributes) {
-			$allowed = array_flip((array) $this->attributes);
-		}
-		
-		// Generate allowed attributes automatically 
-		else {
-			
-			// Start with all public object variables
-			$allowed = get_public_object_vars($this);
-			
-			// Remove associations, but put their foreignKey in its place
-			$associations = (array) $this->table()->associations();
-			Log::temp(get_class($this) . ' associations ' . var_export($associations, 1));
-			$allowed = array_diff_key($allowed, $associations);
-			foreach ($associations as $association) {
-				if (is_object($association) && isset($association->foreignKey)) {
-					$allowed[$association->foreignKey] = 1;
-				}
-			}
-		}
-		
-		// Return the array!
-		$ra =  array_intersect_key(get_object_vars($this), $allowed);
-		Log::temp(get_class($this) . ' toArray() => ' . print_r($ra, 1));
-		return $ra;
 	}
 	
+	/**
+	 * Get a simple string representation of this model
+	 */
 	function toString() {
 		return $this->key();
 	}
 	
+	/**
+	 * Support the PHP automatic string casting
+	 */
 	function __toString() {
 		return $this->toString();
 	}
 	
+	/**
+	 * Validate this model or arbitrary data that could be
+	 * attributes of this model
+	 */
 	function validate($data = null) 
 	{
 		// Allow user to supply arbitrary data to validate
