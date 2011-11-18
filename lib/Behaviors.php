@@ -76,6 +76,29 @@ class AutoAssociate extends Behavior
 	}
 }
 
+class SaveIndexes extends Behavior
+{
+	function attach(Table $table)
+	{
+		$table->bind('afterSave', __CLASS__ . '::afterSave');
+	}
+	
+	static function afterSave(&$model)
+	{
+		if ($indexes = (array) $model::$indexes) {
+			foreach ($indexes as $index) {
+				if ($model->hasAttribute($index)) {
+					$model->table()->set(array($index, $model->$index), $model->id);
+				} elseif ($model->isAssociated($index)) {
+					throw new Exception('Association indexes are not yet supported. Try indexing the association ID instead.');
+				} else {
+					Log::warning(get_class($model) . ' indexes non-existent attribute ' . $index);
+				}
+			}
+		}
+	}
+}
+
 class DeepSave extends Behavior
 {
 	function attach(Table $table) 
