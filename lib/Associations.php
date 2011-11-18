@@ -72,8 +72,10 @@ abstract class Association
 	/**
 	 * Returned by the left model when a user accesses the association
 	 */
-	function delegate($left = null) {
-		return $this->associated($left);
+	function delegate($left = null) 
+	{
+		$this->left = $left;
+		return $this;
 	}
 }
 
