@@ -16,7 +16,7 @@ abstract class Model {
 	);
 	
 	// Not yet supported
-	static $index; // which properties to index
+	static $indexes; // which properties to index
 	
 	// Callbacks
 	static $callbacks;
@@ -26,9 +26,6 @@ abstract class Model {
 	
 	// Associations
 	static $associations;
-	
-	// For reference returns
-	public static $null;
 	
 	// For meta information
 	protected $meta;
