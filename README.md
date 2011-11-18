@@ -128,20 +128,3 @@ class CustomBehavior extends ActiveRedis\Behavior
 ```
 
 If you create your own Model class that extends ActiveRedis\Model, it's easy to trigger your own custom events via ```$this->trigger('eventName', $arguments');```.
-
-### Indexes
-
-Since redis does not provide any way to search, it is easy to index attributes. Indexing an attribute allows you to locate a model from the attribute value.
-
-```php
-<?php
-
-class User extends ActiveRedis\Model {
-	static $indexes = array('username');
-}
-
-// Example find by username
-$username = $_POST['username'];
-$user = User::find("username:$username");
-
-```
