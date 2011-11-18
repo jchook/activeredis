@@ -1,10 +1,12 @@
 # PHP ActiveRedis
 
-ActiveRedis is a PHP 5.3+ library that brings relational model abstraction to [Redis](http://redis.io/).
+[ActiveRedis](https://github.com/jchook/activeredis) is a PHP 5.3+ library that brings relational model abstraction to [Redis](http://redis.io/).
 
 * Simple
 * Lightweight
-* Easily adapts to any PHP Redis interface
+* Easily adapts to any PHP Redis interface, including [Predis](https://github.com/nrk/predis) and [PhpRedis](https://github.com/nicolasff/phpredis)
+
+[ActiveRedis](https://github.com/jchook/activeredis) synthesizes a new implementation of the [Active record pattern](http://en.wikipedia.org/wiki/Active_record_pattern), borrowing good features from other libraries, but incorporating the simplicity of [Redis](http://redis.io/).
 
 ## Development
 
@@ -12,8 +14,9 @@ ActiveRedis is currently in its infancy.
 
 However, it is being actively developed. Feel free to fork & join in the fun. Some planned features:
 
-* Model Associations (in progress)
-* Indexing (next in the queue)
+* Model Associations (nearly finished)
+* Indexing (naive version in progress)
+** Eventually indexing will be configurable, allowing the programmer to specify case-sensitivity, key filters, whether the indexed value is unique, which property to associate with the index (id by default of course), etc.
 * Bubbling events
 
 ## Installation
@@ -38,7 +41,7 @@ ActiveRedis\Database::adapt(new Predis\Client);
 
 ### Creating New Model Classes
 
-The model classes can be extremely simple.
+The model classes can be quite simple.
 
 ```php
 <?php class Human extends ActiveRedis\Model {} ?>
@@ -69,7 +72,7 @@ $human->delete();
 
 ### Associations
 
-Associations are a very powerful addition to ActiveRedis that allows you to easily create meaningful relationships between your models. Below is a simple example where a User class is associated with potentially many Project objects. The format is simple, elastic, and easily configured.
+Associations are a very powerful addition to ActiveRedis that allows you to easily create meaningful relationships between your models. Below is a simple example where a User class is associated with potentially many Project objects. The format is simple, elastic, and easily configured. ActiveRedis is smart about namespaces and will usually guess the correct namespace for both your model & association classes.
 
 ```php
 <?php
@@ -102,5 +105,43 @@ $user->save();
 
 It's easy to build your own types of associations. Most of the association classes are only about 20 lines of PHP. See for yourself in [lib/Associations.php](https://github.com/jchook/activeredis/blob/master/lib/Associations.php "Read Associations.php").
 
-ActiveRedis is smart about namespaces and will automatically guess the correct namespace for your association classes.
 
+### Behaviors
+
+Behaviors allow you to easily inject functionality into models by attaching custom callbacks to model events. Below is a simple example that sets a custom value before a model is saved.
+
+```php
+<?php
+
+class CustomBehavior extends ActiveRedis\Behavior 
+{
+	function attach($table) 
+	{
+		$table->bind('beforeSave', 'CustomBehavior::beforeSave');
+	}
+	
+	function beforeSave($model)
+	{
+		$model->customValue = true;
+	}
+}
+```
+
+If you create your own Model class that extends ActiveRedis\Model, it's easy to trigger your own custom events via ```$this->trigger('eventName', $arguments');```.
+
+### Indexes
+
+Since redis does not provide any way to search, it is easy to index attributes. Indexing an attribute allows you to locate a model from the attribute value.
+
+```php
+<?php
+
+class User extends ActiveRedis\Model {
+	static $indexes = array('username');
+}
+
+// Example find by username
+$username = $_POST['username'];
+$user = User::find("username:$username");
+
+```
