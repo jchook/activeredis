@@ -85,13 +85,20 @@ class SaveIndexes extends Behavior
 	
 	static function afterSave(&$model)
 	{
-		if ($indexes = (array) $model::$indexes) {
-			foreach ($indexes as $index) {
-				if ($model->hasAttribute($index)) {
+		if ($indexes = (array) $model::$indexes) 
+		{
+			foreach ($indexes as $index) 
+			{
+				if ($model->hasAttribute($index)) 
+				{
 					$model->table()->set(array($index, $model->$index), $model->id);
-				} elseif ($model->isAssociated($index)) {
+				}
+				elseif ($model->isAssociated($index)) 
+				{
 					throw new Exception('Association indexes are not yet supported. Try indexing the association ID instead.');
-				} else {
+				}
+				else 
+				{
 					Log::warning(get_class($model) . ' indexes non-existent attribute ' . $index);
 				}
 			}

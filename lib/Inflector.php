@@ -20,7 +20,7 @@ class Inflector {
 	
 	
 	/**
-	 * Code below borrowed from phpactiveredis.org
+	 * Code below borrowed from phpactiverecord.org
 	 */
 	private static $plural = array(
         '/(quiz)$/i'               => "$1zes",
