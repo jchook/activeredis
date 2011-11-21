@@ -17,10 +17,11 @@ abstract class Association
 	public $eager; // whether to autolaod on default
 	
 	function __construct($leftClass, $rightClass, $options = null) 
-	{	
+	{
 		$this->leftClass = $leftClass;
 		$this->rightClass = $rightClass;
 		
+		// Extract options to this association object
 		if (is_array($options)) {
 			foreach ($options as $var => $val) {
 				$this->$var = $val;
@@ -117,37 +118,6 @@ class HasMany extends Association
 	
 	function associate(Model $left, Model $right) {
 		$left->addAttribute($this->foreignKey, $right->primaryKeyValue());
-	}
-	
-	function dataAssociatedWith(Model $left) {
-		return $left->db()->sGetMembers($left->key($this->name));
-	}
-	
-	function associated(Model $left, $start = null, $length = null) {
-		// get some objects
-	}
-	
-	function beforeDelete(Model $left) {
-		$left->db()->srem($left->key($this->name), $left->primaryKeyValue());
-	}
-}
-
-class HasManySorted extends HasMany 
-{	
-	public $by;
-	
-	function attach(Table $table) {}
-	
-	function zscore($left) {
-		return $left->getAttribute($this->by);
-	}
-	
-	function associated(Model $left) {
-		
-	}
-	
-	function associate(Model $left, Model $right) {
-		$left->db()->zadd($left->key($this->name), $this->zscore($left), $right->primaryKeyValue());
 	}
 }
 
