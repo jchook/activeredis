@@ -23,6 +23,19 @@ namespace ActiveRedis {
 		return \get_class_vars($class);
 	}
 	
+	/**
+	 * This is different from (array) $anything
+	 * in case $anything is an object.
+	 */
+	function array_force($anything)
+	{
+		if (!is_array($anything))
+		{
+			return array($anything);
+		}
+		return $anything;
+	}
+	
 	function array_flatten(array $array) 
 	{
 		$i = 0;
