@@ -3,9 +3,9 @@
 namespace ActiveRedis;
 
 class Adapter 
-{	
-	public $map;
-	public $db;
+{
+	var $map;
+	var $db;
 	
 	function __construct($config)
 	{

@@ -47,7 +47,8 @@ class AutoAssociate extends Behavior
 	
 	function beforeSave($model)
 	{
-		if (isset($this->done)) {
+		if (isset($this->done)) 
+		{
 			return;
 		}
 		
@@ -133,16 +134,14 @@ class DeepSave extends Behavior
 				{
 					if ($name && is_string($name) && ($associatedModels = $model->associated($name))) 
 					{
-						if (!is_array($associatedModels)) {
+						if (!is_array($associatedModels)) 
+						{
 							$associatedModels = array($associatedModels);
 						}
 						foreach ($associatedModels as $associatedModel) 
 						{
 							if (!is_object($associatedModel)) 
 							{
-								if (is_array($associatedModel)) {
-									print_r(array_keys($associatedModel));
-								}
 								throw new Exception(__CLASS__ . '::' . __FUNCTION__ . ' expects associated model ' . $name . ' to be an object. Receivied ' . $associatedModel);
 							}
 						
