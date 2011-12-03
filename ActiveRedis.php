@@ -1,5 +1,8 @@
 <?php
 
+if (defined('ActiveRedis\Version')) return;
+define('ActiveRedis\Version', '∞');
+
 // Logging :]
 include __DIR__ . '/lib/Log.php';
 

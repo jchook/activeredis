@@ -2,7 +2,14 @@
 
 namespace ActiveRedis;
 
-class Exception extends \Exception {}
+class Exception extends \Exception {
+	public function __construct($message = null, $code = 0, Exception $previous = null) {
+		if (is_null($message)) {
+			$message = array_pop(explode('\\', get_class($this)));
+		}
+		parent::__construct($message, $code, $previous);
+	}
+}
 
 class AttributeNotFound extends Exception {}
 

@@ -119,6 +119,14 @@ class HasMany extends Association
 	function associate(Model $left, Model $right) {
 		$left->addAttribute($this->foreignKey, $right->primaryKeyValue());
 	}
+	
+	function associated(Model $left) {
+		// get a model
+		$rightClass = $this->rightClass;
+		if ($id = $left->table()->get($this->foreignKey)) {
+			return $rightClass::find($id);
+		}
+	}
 }
 
 ?>

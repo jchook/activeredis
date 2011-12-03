@@ -24,10 +24,10 @@ class Table {
 					$this->$var = $val;
 		
 		if (isset($inject['associations'])) {
-			$this->buildAssociations($inject['associations']);
+			$this->addAssociations($inject['associations']);
 		}
 		if (isset($inject['behaviors'])) {
-			$this->buildBehaviors($inject['behaviors']);
+			$this->addBehaviors($inject['behaviors']);
 		}
 		
 		Log::debug($this->model . ' Table loaded');
@@ -88,7 +88,8 @@ class Table {
 		return $result;
 	}
 	
-	function association($throughName) {
+	function association($throughName) 
+	{
 		if (isset($this->associations[$throughName])) {
 			Log::vebug($this->model . ' Table association(' . $throughName . ') found');
 			return $this->associations[$throughName];
@@ -96,18 +97,21 @@ class Table {
 		Log::vebug($this->model . ' Table association(' . $throughName . ') does not exist');
 	}
 	
-	function associations() {
+	function associations() 
+	{
 		return (array) $this->associations;
 	}
 	
-	function findClass($basename, $namespaces) {
+	function findClass($basename, $namespaces) 
+	{
 		if (class_exists($basename, false)) {
 			return $basename;
 		}
 		$namespaces = (array) $namespaces;
 		$basename = trim($basename, '\\');
 		$attempts = array();
-		foreach ($namespaces as $namespace) {
+		foreach ($namespaces as $namespace) 
+		{
 			$className = $namespace . '\\' . $basename;
 			if (class_exists($className, false)) {
 				return $className;
@@ -118,7 +122,20 @@ class Table {
 		Log::warning('Class ' . $basename . ' could not be resolved. Attempted ' . json_encode($attempts));
 	}
 	
-	function buildBehaviors($behaviors)
+	/**
+	 * Add a set of behaviors to this table
+	 * 
+	 * Ex $behaviors:
+	 * 'BehaviorClass'
+	 * array('BehaviorClass' => $options, 'AnotherBehaviorClass')
+	 * 
+	 * $options is passed as the first argument for the behavior class's constructor
+	 * 
+	 * @param mixed $behaviors
+	 * @return null
+	 * @throws Exception
+	 */
+	function addBehaviors($behaviors)
 	{
 		if ($behaviors) 
 		{	
@@ -130,8 +147,8 @@ class Table {
 					$behavior = $id;
 					$options = $val;
 				} else {
-					$behavior = $val;
-					$options = null;
+					$options = (array) $val;
+					$behavior = (string) array_shift($options);
 				}
 				if (!($behaviorClass = $this->findClass($behavior, array(get_namespace($this->model), __NAMESPACE__)))) {
 					throw new Exception($this->model . ' table is unable to locate behavior ' . $behavior);
@@ -144,7 +161,19 @@ class Table {
 		}
 	}
 	
-	function buildAssociations($associations) 
+	/**
+	 * Add a set of associations to this table
+	 * 
+	 * Ex $associations:
+	 * 'MonoAssociationClass ModelClass'
+	 * 'PolyAssociationClass ModelClasses'
+	 * array(array('AssociationClass', 'config' => 'options', 'follow' => true), 'SimpleAssociationClass')
+	 * 
+	 * @param mixed $associations
+	 * @return null
+	 * @throws Exception
+	 */
+	function addAssociations($associations) 
 	{
 		if ($associations) 
 		{
@@ -215,12 +244,6 @@ class Table {
 		$result = $this->set($model->primaryKeyValue(), $model->serialize());
 		$this->trigger('afterUpdate', array($model, $result));
 		return $result;
-	}
-	
-	function updateIndex(Model $model, $field) {
-		if (isset($this->attributes[$field])) {
-			$this->db()->set($this->key(array($field, $this->attributes[$field])), $this->primaryKeyValue());
-		}
 	}
 	
 	function nextUnique($type = 'id') {

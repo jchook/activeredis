@@ -39,13 +39,6 @@ abstract class Model {
 		}
 	}
 	
-	function __call($fn, $args)
-	{
-		if ($association = $this->table()->association($fn)) {
-			return $association->delegate($this);
-		}
-	}
-	
 	/**
 	 * Dynamic get attribute / association
 	 */
@@ -84,8 +77,7 @@ abstract class Model {
 		// Dynamic Initialization
 		$method = 'set' . ucfirst($var);
 		if (method_exists($this, $method)) {
-			$result = $this->$method();
-			return $result;
+			return $this->$method($val);
 		}
 		
 		// Association
@@ -172,7 +164,8 @@ abstract class Model {
 	 */
 	public static function create($config = null) 
 	{
-		$model = new static($config);
+		$class = get_called_class();
+		$model = new $class($config);
 		$model->save();
 		return $model;
 	}
@@ -182,6 +175,7 @@ abstract class Model {
 	 * 
 	 * @param mixed $id
 	 * @return Model
+	 * @throws NotFound
 	 */
 	public static function find($id) 
 	{
@@ -192,7 +186,7 @@ abstract class Model {
 		}
 		
 		// Not found!
-		throw new Exception('Not found');
+		throw new NotFound;
 	}
 	
 	/**
@@ -222,6 +216,7 @@ abstract class Model {
 	 * 
 	 * @param mixed $name optional
 	 * @return mixed by reference
+	 * @throws Exception
 	 */
 	public function &associated($name = null)
 	{
@@ -430,17 +425,20 @@ abstract class Model {
 	 * @return bool
 	 */
 	function isNew() {
-		return $this->isNew;
+		return (bool) $this->isNew;
 	}
 	
 	/**
 	 * Remove this model from the database
+	 * 
+	 * @return bool
 	 */
 	function delete() {
 		if ($this->db()->rem($this->key())) {
 			$this->isNew = true;
 			return true;
 		}
+		return false;
 	}
 	
 	/**
@@ -475,6 +473,8 @@ abstract class Model {
 	
 	/**
 	 * Insert a new row into the table for this model
+	 * 
+	 * @return mixed $success
 	 */
 	protected function insert() 
 	{
@@ -487,6 +487,8 @@ abstract class Model {
 	
 	/**
 	 * Update the table row for this model
+	 * 
+	 * @return mixed $success
 	 */
 	protected function update() 
 	{
@@ -511,6 +513,8 @@ abstract class Model {
 	
 	/**
 	 * Get a simple string representation of this model
+	 * 
+	 * @return string
 	 */
 	function toString() {
 		return $this->key();
@@ -518,6 +522,8 @@ abstract class Model {
 	
 	/**
 	 * Support the PHP automatic string casting
+	 * 
+	 * @return string
 	 */
 	function __toString() {
 		return $this->toString();
@@ -526,6 +532,9 @@ abstract class Model {
 	/**
 	 * Validate this model or arbitrary data that could be
 	 * attributes of this model
+	 * 
+	 * @throws Invalid
+	 * @return true
 	 */
 	function validate($data = null) 
 	{
@@ -537,7 +546,7 @@ abstract class Model {
 		foreach ($data as $var => $val) {
 			if (method_exists($this, $validateMethod = 'validate' . ucfirst($var))) {
 				$result = $this->$validateMethod($val);
-				if ($result === false || is_string($result)) {
+				if ($result === false || ($result && is_string($result))) {
 					throw new Invalid($result ?: 'Invalid');
 				}
 			}

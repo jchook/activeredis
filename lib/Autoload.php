@@ -30,12 +30,10 @@ class Autoload
 	}
 	
 	static function register() {
-		Log::debug(get_called_class() . ' registered');
 		spl_autoload_register(get_called_class() . '::load');
 	}
 	
 	static function unregister() {
-		Log::debug(get_called_class() . ' unregistered');
 		spl_autoload_unregister(get_called_class() . '::load'); 
 	}
 }
