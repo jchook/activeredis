@@ -102,7 +102,7 @@ class Table {
 		return (array) $this->associations;
 	}
 	
-	function findClass($basename, $namespaces) 
+	function findClass($basename, $namespaces = '') 
 	{
 		if (class_exists($basename, false)) {
 			return $basename;
@@ -113,8 +113,8 @@ class Table {
 		foreach ($namespaces as $namespace) 
 		{
 			$className = $namespace . '\\' . $basename;
-			if (class_exists($className, false)) {
-				return $className;
+			if (class_exists($className)) {
+				return ltrim($className, '\\');
 			} else {
 				$attempts[] = $className;
 			}
