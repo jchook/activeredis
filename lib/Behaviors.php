@@ -13,7 +13,7 @@ abstract class Behavior
 	function extend($options)
 	{
 		if (is_array($options))
-			foreach ($this->options as $option => $value)
+			foreach ($options as $option => $value)
 				if (is_string($option))
 					$this->$option = $value;
 	}

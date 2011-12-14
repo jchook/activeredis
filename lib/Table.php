@@ -55,39 +55,66 @@ class Table {
 		return static::$instances[$class];
 	}
 	
+	/**
+	 * Get the current database instance to use for this table
+	 * 
+	 * @return Database
+	 */
 	static function db() 
 	{
 		return Database::instance();
 	}
 	
-	function bind($callbackName, $callback) 
+	/**
+	 * Bind a callback to an event
+	 * 
+	 * @param string $eventName
+	 * @param callback $callback
+	 * @return $this
+	 */
+	function bind($eventName, $callback) 
 	{
-		$this->callbacks[$callbackName][] = $callback;
+		$this->callbacks[$eventName][] = $callback;
 		return $this;
 	}
 	
-	function trigger($callbackName, $args = null) 
+	/**
+	 * Trigger an event. Runs all callbacks bound to the event.
+	 * If a callback returns false, it will stop propagation of
+	 * the calling event.
+	 * 
+	 * @param string $eventName
+	 * @param mixed $args
+	 * @return $result
+	 */
+	function trigger($eventName, $args = null) 
 	{
 		$result = null;
-		$callbacks = isset($this->callbacks[$callbackName]) ? (array) $this->callbacks[$callbackName] : array();
+		$callbacks = isset($this->callbacks[$eventName]) ? (array) $this->callbacks[$eventName] : array();
 		
 		if ($callbacks) 
 		{	
-			Log::vebug($this->model . ' start triggering ' . count($callbacks) . ' callbacks for ' . $callbackName);
+			Log::vebug($this->model . ' start triggering ' . count($callbacks) . ' callbacks for ' . $eventName);
 			
 			foreach ($callbacks as $index => $callback) {
-				Log::vebug($this->model . ' --> ' . $callbackName . ' ' . $index . ' : ' . $callback);
+				Log::vebug($this->model . ' --> ' . $eventName . ' ' . $index . ' : ' . $callback);
 				if (($result = call_user_func_array($callback, $args)) === false) {
 					return false;
 				}
 			}
 			
-			Log::vebug($this->model . ' done triggering ' . count($callbacks) . ' callbacks for ' . $callbackName);
+			Log::vebug($this->model . ' done triggering ' . count($callbacks) . ' callbacks for ' . $eventName);
 		}
 		
 		return $result;
 	}
 	
+	/**
+	 * Get an Association object by name
+	 * 
+	 * @param string $throughName
+	 * @return mixed Association | null
+	 */
 	function association($throughName) 
 	{
 		if (isset($this->associations[$throughName])) {
@@ -97,11 +124,23 @@ class Table {
 		Log::vebug($this->model . ' Table association(' . $throughName . ') does not exist');
 	}
 	
+	/**
+	 * Return the array of all association objects
+	 * @return array
+	 */
 	function associations() 
 	{
 		return (array) $this->associations;
 	}
 	
+	/**
+	 * Utility to find a class. Tests to see if the
+	 * class is within any of the given namespaces
+	 * 
+	 * @param string $basename class name without namespaces
+	 * @param mixed $namespaces string | array
+	 * @return mixed string | null
+	 */
 	function findClass($basename, $namespaces = '') 
 	{
 		if (class_exists($basename, false)) {
@@ -211,6 +250,12 @@ class Table {
 		}
 	}
 	
+	/**
+	 * Get a single full key for a record in the table
+	 * 
+	 * @param mixed $subkeys any number of subkeys. nested arrays are flattened.
+	 * @return string
+	 */
 	function key($subkeys = null)  {
 		return implode($this->separator, array_flatten(array_merge((array) $this->name, (array) $subkeys)));
 	}

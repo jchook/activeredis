@@ -15,8 +15,12 @@ abstract class Model {
 		'behaviors' => array('AutoAssociate', 'AutoTimestamp', 'DeepSave', 'SaveIndexes'),
 	);
 	
-	// Not yet supported
-	static $indexes; // which properties to index
+	// Variables accessible via __get or __set
+	// Still in planning phase
+	static $accessible;
+	
+	// Indexes
+	static $indexes; 
 	
 	// Callbacks
 	static $callbacks;
@@ -30,12 +34,38 @@ abstract class Model {
 	// For meta information
 	protected $meta;
 	
+	/**
+	 * Dynamic finder methods. These are kind of dumb.
+	 * 
+	 * @deprecated 2011-12-11
+	 */
+	static function __callStatic($fn, $args)
+	{
+		if (substr($fn, 0, 6) == 'findBy') {
+			$fn = lcfirst(substr($fn, 6));
+			if (method_exists(get_called_class(), $fn)) {
+				return call_user_func_array('static::' . $fn, $args);
+			} else {
+				return static::findBy(explode('_', $fn), $args);
+			}
+		}
+	}
+	
+	/**
+	 * Create an instance of this model
+	 * 
+	 * @param mixed $id primary key value or an array of attribute => value pairs.
+	 *                  NOTE that if you want to add association objects, you must
+	 *                  do this outside of the object construction, or via create.
+	 */
 	function __construct($id = null, $isNew = true) 
 	{	
 		$this->isNew = $isNew;
 		
 		if (is_array($id)) {
-			$this->setAttributes($id);
+			$this->populate($id);
+		} elseif ($id) {
+			$this->primaryKeyValue($id);
 		}
 	}
 	
@@ -70,6 +100,14 @@ abstract class Model {
 	}
 	
 	/**
+	 * Support isset for attributes / associations
+	 */
+	function __isset($var)
+	{
+		return isset($this->attributes[$var]) || isset($this->associated[$var]);
+	}
+	
+	/**
 	 * Dynamic set attribute / association
 	 */
 	function __set($var, $val)
@@ -101,14 +139,6 @@ abstract class Model {
 		} elseif (isset($this->associated[$var])) {
 			unset($this->associated[$var]);
 		}
-	}
-	
-	/**
-	 * Support isset for attributes / associations
-	 */
-	function __isset($var)
-	{
-		return isset($this->attributes[$var]) || isset($this->associated[$var]);
 	}
 	
 	/**
@@ -162,16 +192,16 @@ abstract class Model {
 	 * Create a new instance of this model
 	 * Automatically saves to the database
 	 */
-	public static function create($config = null) 
+	public static function create($config = null, $save = true) 
 	{
 		$class = get_called_class();
-		$model = new $class($config);
-		$model->save();
+		$model = new $class;
+		$save and $model->save();
 		return $model;
 	}
 	
 	/**
-	 * Retrieve an instance of this model from the database
+	 * Retrieve a record by primary key value and instantiate it
 	 * 
 	 * @param mixed $id
 	 * @return Model
@@ -187,6 +217,50 @@ abstract class Model {
 		
 		// Not found!
 		throw new NotFound;
+	}
+	
+	/**
+	 * Retrieve all of the records and instantiate them
+	 */
+	public static function findAll($ids)
+	{
+		return array_map('static::find', $ids);
+	}
+	
+	/**
+	 * Find any records matching an id within the given set.
+	 * DOES NOT throw NotFound
+	 * 
+	 * @param array $ids
+	 * @return array
+	 */
+	public static function findAny($ids)
+	{
+		$ids = (array) $ids;
+		$result = array();
+		foreach ($ids as $id) {
+			try {
+				if ($temp = static::find($id)) {
+					$result[] = $temp;
+				}
+			} catch (NotFound $e) {}
+		}
+		return $result;
+	}
+	
+	/**
+	 * Find by functions do not throw an exception
+	 * 
+	 * @param string $keyPrefix
+	 * @param string $keySuffix
+	 * @return mixed
+	 */
+	public static function findBy($keyPrefix, $keySuffix)
+	{
+		try {
+			return static::find(array($keyPrefix, $keySuffix));
+		} catch(NotFound $e) {}
+		return null;
 	}
 	
 	/**
@@ -326,12 +400,12 @@ abstract class Model {
 	 * @param mixed $val
 	 * @return mixed $val
 	 */
-	public function setAttribute($var, $val) 
+	public function setAttribute($name, $value) 
 	{
-		if (!isset($this->attributes[$var]) || ($this->attributes[$var] !== $val)) {
-			$this->isDirty[$var] = true;
+		if (!isset($this->attributes[$name]) || ($this->attributes[$name] !== $value)) {
+			$this->isDirty[$name] = true;
 		}
-		return $this->attributes[$var] = $val;
+		return $this->attributes[$name] = $value;
 	}
 	
 	/**
@@ -340,12 +414,12 @@ abstract class Model {
 	 * @param string $var
 	 * @return mixed null if the attribute does not exist
 	 */
-	function getAttribute($var) 
+	function getAttribute($name) 
 	{
-		if (isset($this->attributes[$var])) {
-			return $this->attributes[$var];
+		if (isset($this->attributes[$name])) {
+			return $this->attributes[$name];
 		}
-		Log::notice('Undefined attribute ' . $var . ' in ' . get_class($this));
+		Log::notice('Undefined attribute ' . $name . ' in ' . get_class($this));
 	}
 	
 	/**
@@ -354,9 +428,9 @@ abstract class Model {
 	 * @param string $var name
 	 * @return bool
 	 */
-	function hasAttribute($var)
+	function hasAttribute($name)
 	{
-		return isset($this->attributes[$var]);
+		return isset($this->attributes[$name]);
 	}
 	
 	/**
@@ -407,7 +481,7 @@ abstract class Model {
 	/**
 	 * True if the attribute named has (potentially) been modified
 	 * since it was retrieved from the database. If no attribute name
-	 * is supplied, this function returns this->isDirty exactly
+	 * is supplied, this method returns this->isDirty exactly
 	 * 
 	 * @param mixed $name optional
 	 * @return mixed
@@ -499,6 +573,17 @@ abstract class Model {
 			// $this->dirty = false;
 			return $success;
 		}
+	}
+	
+	/**
+	 * Populate this object with data
+	 */
+	function populate($data)
+	{
+		if (is_array($data))
+			foreach ($data as $name => $value)
+				if ($name && is_string($name))
+					$this->$name = $value;
 	}
 	
 	/**

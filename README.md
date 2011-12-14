@@ -4,9 +4,10 @@
 
 * Simple
 * Lightweight
+* Extendable
 * Easily adapts to any PHP Redis interface, including [Predis](https://github.com/nrk/predis) and [PhpRedis](https://github.com/nicolasff/phpredis)
 
-ActiveRedis synthesizes a new implementation of the [Active record pattern](http://en.wikipedia.org/wiki/Active_record_pattern), borrowing good features from other libraries, but incorporating the simplicity of Redis.
+ActiveRedis synthesizes a new, unorthodox implementation of the [Active record pattern](http://en.wikipedia.org/wiki/Active_record_pattern), borrowing good features from other libraries, but incorporating the simplicity of Redis.
 
 ## Development
 
@@ -23,6 +24,7 @@ However, it is being actively developed. Feel free to fork & join in the fun. So
 
 1. Clone activeredis into your project, or add it as a submodule.
 1. Add the following code to run once in your project:
+
 
 ```php
 <?php
@@ -113,18 +115,40 @@ Behaviors allow you to easily inject functionality into models by attaching cust
 ```php
 <?php
 
-class CustomBehavior extends ActiveRedis\Behavior 
-{
-	function attach($table) 
-	{
+class CustomModel extends ActiveRedis\Model {
+	static $behaviors = array('CustomBehavior');
+}
+
+class CustomBehavior extends ActiveRedis\Behavior {
+		
+	function attach($table) {
 		$table->bind('beforeSave', 'CustomBehavior::beforeSave');
 	}
 	
-	function beforeSave($model)
-	{
+	function beforeSave($model) {
 		$model->customValue = true;
 	}
 }
 ```
 
 If you create your own Model class that extends ActiveRedis\Model, it's easy to trigger your own custom events via ```$this->trigger('eventName', $arguments');```.
+
+
+### Indexes
+
+Since Redis is NoSQL, you cannot use a WHERE clause to query for data. Instead, ActiveRedis provides Indexes which automatically index data in a customizable way.
+
+```php
+<?php
+
+class User extends ActiveRedis\Model {
+	static $indexes = array('name');
+}
+
+// Once the user is created...
+$user = User::create(array('name' => 'Wesley Roberts'));
+
+// It is possible to find the user by name
+$user = User::find(array('name' => 'Wesley Roberts'));
+
+```
