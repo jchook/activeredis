@@ -126,6 +126,7 @@ abstract class Model {
 		
 		// Default is to set attributes
 		$this->isDirty[$var] = true;
+		Log::vebug(get_class($this) . ' setting attribute ' . $var . ' to ' . $val);
 		return $this->attributes[$var] = $val;
 	}
 	
@@ -381,6 +382,11 @@ abstract class Model {
 		}
 	}
 	
+	public function addAttribute($name, $value)
+	{
+		$this->attributes[$name][] = $value;
+	}
+	
 	/**
 	 * Set attributes via name => $value pairs
 	 * 
@@ -524,10 +530,12 @@ abstract class Model {
 	function save($validate = true) 
 	{
 		if ($validate) {
-			if (!$this->validate()) {
+			if ($this->validate() === false) {
+				Log::debug('save invalid');
 				return false;
 			}
 		}
+		Log::debug('save');
 		$isNew = $this->isNew();
 		if ($isNew || $this->isDirty()) 
 		{
@@ -542,6 +550,7 @@ abstract class Model {
 			$this->trigger('afterSave', array(&$this, $isNew, $result));
 			return $result;
 		}
+		Log::debug(get_class($this) . ' save() called unnecessarily');
 		return true; // record is already up-to-date
 	}
 	
@@ -552,6 +561,7 @@ abstract class Model {
 	 */
 	protected function insert() 
 	{
+		Log::debug(get_class($this) . ' insert');
 		if ($success = $this->table()->insert($this)) {
 			// $this->isNew = false;
 			// $this->isDirty = false;
@@ -566,6 +576,7 @@ abstract class Model {
 	 */
 	protected function update() 
 	{
+		Log::debug(get_class($this) . ' update');
 		if ($this->isNew()) {
 			throw new Exception('Cannot update new record');
 		}
