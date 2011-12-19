@@ -10,9 +10,10 @@ class Table {
 	public $model; // class name
 	public $database; // name
 	public $callbacks;
-	public $behaviors;
+	public $behaviors = array('AutoAssociate' => true, 'AutoTimestamp' => true, 'DeepSave' => true, 'SaveIndexes' => true);
 	public $separator = ':';
 	public $associations;
+	public $attributes;
 	
 	function __construct(array $inject = null)  
 	{
@@ -176,12 +177,12 @@ class Table {
 	 */
 	function addBehaviors($behaviors)
 	{
-		if ($behaviors) 
-		{	
+		if ($behaviors) {	
 			$behaviors = (array) $behaviors;
 			
-			foreach ($behaviors as $id => $val)
-			{
+			foreach ($behaviors as $id => $val) {
+				
+				// Get everything in the correct format
 				if (is_string($id)) {
 					$behavior = $id;
 					$options = $val;
@@ -189,13 +190,21 @@ class Table {
 					$options = (array) $val;
 					$behavior = (string) array_shift($options);
 				}
-				if (!($behaviorClass = $this->findClass($behavior, array(get_namespace($this->model), __NAMESPACE__)))) {
-					throw new Exception($this->model . ' table is unable to locate behavior ' . $behavior);
+				
+				// Remove the behavior by setting options to false
+				if ($options === false) {
+					isset($this->behaviors[$behavior]) and unset($this->behaviors[$behavior]);
+					Log::vebug($this->model . ' removed behavior ' . $behaviorClass);
+				} 
+				
+				// Otherwise guess the namespace and add the behavior
+				else {
+					if (!($behaviorClass = $this->findClass($behavior, array(get_namespace($this->model), __NAMESPACE__)))) {
+						throw new Exception($this->model . ' table is unable to locate behavior ' . $behavior);
+					}
+					$this->behaviors[$behavior] = new $behaviorClass($this, $options);
+					Log::vebug($this->model . ' attached behavior ' . $behaviorClass);
 				}
-			
-				$this->behaviors[$behavior] = new $behaviorClass($this, $options);
-			
-				Log::vebug($this->model . ' attached behavior ' . $behaviorClass);
 			}
 		}
 	}

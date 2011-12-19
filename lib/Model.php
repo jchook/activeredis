@@ -11,9 +11,7 @@ abstract class Model {
 	
 	static $primaryKey = 'id';
 	static $keySeparator = ':';
-	static $table = array(
-		'behaviors' => array('AutoAssociate', 'AutoTimestamp', 'DeepSave', 'SaveIndexes'),
-	);
+	static $table = array();
 	
 	// Variables accessible via __get or __set
 	// Still in planning phase
@@ -33,23 +31,6 @@ abstract class Model {
 	
 	// For meta information
 	protected $meta;
-	
-	/**
-	 * Dynamic finder methods. These are kind of dumb.
-	 * 
-	 * @deprecated 2011-12-11
-	 */
-	static function __callStatic($fn, $args)
-	{
-		if (substr($fn, 0, 6) == 'findBy') {
-			$fn = lcfirst(substr($fn, 6));
-			if (method_exists(get_called_class(), $fn)) {
-				return call_user_func_array('static::' . $fn, $args);
-			} else {
-				return static::findBy(explode('_', $fn), $args);
-			}
-		}
-	}
 	
 	/**
 	 * Create an instance of this model
@@ -77,8 +58,7 @@ abstract class Model {
 		// Dynamic Initialization
 		$method = 'get' . ucfirst($var);
 		if (method_exists($this, $method)) {
-			$result = $this->$method();
-			return $result;
+			return $this->$method();
 		}
 		
 		// Association
@@ -124,10 +104,8 @@ abstract class Model {
 			return $this->associated[$var] = $val;
 		}
 		
-		// Default is to set attributes
-		$this->isDirty[$var] = true;
-		Log::vebug(get_class($this) . ' setting attribute ' . $var . ' to ' . $val);
-		return $this->attributes[$var] = $val;
+		// Attribute
+		$this->setAttribute($var, $val);
 	}
 	
 	/**
@@ -139,6 +117,23 @@ abstract class Model {
 			unset($this->attributes[$var]);
 		} elseif (isset($this->associated[$var])) {
 			unset($this->associated[$var]);
+		}
+	}
+	
+	/**
+	 * Dynamic finder methods. These are kind of dumb.
+	 * 
+	 * @deprecated 2011-12-11
+	 */
+	static function __callStatic($fn, $args)
+	{
+		if (substr($fn, 0, 6) == 'findBy') {
+			$fn = lcfirst(substr($fn, 6));
+			if (method_exists(get_called_class(), $fn)) {
+				return call_user_func_array('static::' . $fn, $args);
+			} else {
+				return static::findBy(explode('_', $fn), $args);
+			}
 		}
 	}
 	
@@ -161,12 +156,9 @@ abstract class Model {
 	 * @param mixed $args null | array of arguments
 	 * @return mixed
 	 */
-	public static function trigger($eventName, $args = null)
+	public function trigger($eventName, $args = null)
 	{
-		if (is_null($args)) {
-			$args = array(&$this);
-		}
-		return static::table()->trigger($eventName, $args);
+		return static::table()->trigger($eventName, array_force($args));
 	}
 	
 	/**
@@ -213,7 +205,8 @@ abstract class Model {
 		// Instantiate new class
 		$class = get_called_class();
 		if ($data = static::db()->get(static::table()->key($id))) {
-			return new $class(static::unserialize($data));
+			$model = new $class(static::unserialize($data));
+			static::trigger('afterFind', array($model));
 		}
 		
 		// Not found!
@@ -267,7 +260,7 @@ abstract class Model {
 	/**
 	 * Unserialize data from the database
 	 * 
-	 * @param array $data
+	 * @param string $data
 	 * @return Model
 	 */
 	public static function unserialize($data) 
@@ -280,7 +273,7 @@ abstract class Model {
 	 * 
 	 * @return string
 	 */
-	public function serialize() 
+	public function serialize($data) 
 	{
 		return json_encode($this->toArray());
 	}
@@ -393,9 +386,9 @@ abstract class Model {
 	 * @param array $attributes
 	 * @return null
 	 */
-	public function setAttributes($attributes) {
+	public function setAttributes($attributes, $makeDirty = true) {
 		foreach ($attributes as $var => $val) {
-			$this->setAttribute($var, $val);
+			$this->setAttribute($var, $val, $makeDirty);
 		}
 	}
 	
@@ -404,11 +397,12 @@ abstract class Model {
 	 * 
 	 * @param string $var
 	 * @param mixed $val
+	 * @param bool $makeDirty
 	 * @return mixed $val
 	 */
-	public function setAttribute($name, $value) 
+	public function setAttribute($name, $value, $makeDirty = true) 
 	{
-		if (!isset($this->attributes[$name]) || ($this->attributes[$name] !== $value)) {
+		if ($makeDirty && (!isset($this->attributes[$name]) || ($this->attributes[$name] !== $value))) {
 			$this->isDirty[$name] = true;
 		}
 		return $this->attributes[$name] = $value;

@@ -5,7 +5,7 @@ namespace ActiveRedis;
 class Database 
 {	
 	protected static $db;
-	protected static $default;
+	protected static $default = 'default';
 	
 	public static function adapt($db, $name = null)
 	{

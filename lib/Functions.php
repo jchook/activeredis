@@ -29,13 +29,18 @@ namespace ActiveRedis {
 	 */
 	function array_force($anything)
 	{
-		if (!is_array($anything))
-		{
-			return array($anything);
+		if (is_array($anything)) {
+			return $anything;
 		}
-		return $anything;
+		if (is_null($anything)) {
+			return array();
+		}
+		return array($anything);
 	}
 	
+	/**
+	 * Flatten nested arrays into the top-level array
+	 */
 	function array_flatten(array $array) 
 	{
 		$i = 0;
@@ -47,6 +52,18 @@ namespace ActiveRedis {
 			}
 		}
 		return $array;
+	}
+	
+	function array_blend($a, &$b)
+	{
+		foreach ($b as $index => $element) {
+			if (isset($a[$index]) && is_array($a[$index]) && is_array($b[$index])) {
+				$a[$index] = array_blend($a[$index], $b[$index]);
+			} else {
+				$a[$index] = $b[$index];
+			}
+		}
+		return $a;
 	}
 	
 }
