@@ -11,11 +11,7 @@ ActiveRedis synthesizes a new, unorthodox implementation of the [Active record p
 
 ## License
 
-ActiveRedis is provided to you for limited use under the [MIT License](http://www.opensource.org/licenses/MIT).
-
-This means ActiveRedis free, both as in free beer and free speech. It comes with no warranty or guarantee, but can be freely modified and redistributed, included in commercial projects, or even re-packaged and sold.
-
-You are obligated to agree to the license. If you do not agree to the license, then you are not permitted download or use ActiveRedis.
+ActiveRedis is provided to you for limited use under the [MIT License](http://www.opensource.org/licenses/MIT). You are obligated to agree to the license. If you do not agree to the license, then you are not permitted download or use ActiveRedis.
 
 ## Development
 
