@@ -4,6 +4,8 @@ namespace ActiveRedis;
 
 abstract class Behavior 
 {
+	static $bind;
+	
 	function __construct(Table $table = null, $options = null)
 	{
 		if ($options) $this->extend($options);
@@ -19,7 +21,16 @@ abstract class Behavior
 	}
 	
 	// TODO: Good default functionality for attaching methods
-	abstract function attach(Table $table);
+	function attach(Table $table) 
+	{
+		if ($this::$bind) 
+		{
+			foreach ((array) $this::$bind as $callback) 
+			{
+				$table->bind($callback, array($this, $callback));
+			}
+		}
+	}
 }
 
 class AutoTimestamp extends Behavior
@@ -80,28 +91,122 @@ class AutoAssociate extends Behavior
 
 class SaveIndexes extends Behavior
 {
-	function attach(Table $table)
+	public $enforceUnique = true;
+	public $ignoreCase = null;
+	
+	protected $indexes;
+	
+	// 'username',
+	// array('username')
+	// array(array('username', 'password'),  /* options */ ),
+	function indexes(&$model = null)
 	{
-		$table->bind('afterSave', __CLASS__ . '::afterSave');
+		if ($model && is_null($this->indexes)) {
+			
+			$this->indexes = array();
+		
+			if ($indexes = (array) $model::$indexes) 
+			{
+				foreach ($indexes as $indexKey => $index) 
+				{
+					// allow shorthand
+					if (is_string($index))
+						$index = array($index);
+					// enforce format
+					elseif (!isset($index[0]))
+						continue;
+					
+					$this->indexes[] = $index;
+				}
+			}
+		}
+		
+		return \ActiveRedis\array_unique($this->indexes);
 	}
 	
-	static function afterSave(&$model)
+	function afterConstruct(&$model)
 	{
-		if ($indexes = (array) $model::$indexes) 
+		if ($indexes = (array) $this->indexes($model)) 
 		{
+			$originals = array();
 			foreach ($indexes as $index) 
 			{
-				if ($model->hasAttribute($index)) 
+				if (is_array($index)) 
 				{
-					$model->table()->set(array($index, $model->$index), $model->id);
+					$originals = array_merge($originals, $model->getAttributes($index));
 				}
-				elseif ($model->isAssociated($index)) 
+				else
 				{
-					throw new Exception('Association indexes are not yet supported. Try indexing the association ID instead.');
+					$originals[$index] = $model->attr($index);
 				}
-				else 
+			}
+		}
+		$model->meta('originals', $originals);
+	}
+	
+	/**
+	 * Enforces unique indexes
+	 * 
+	 * @throws Duplicate
+	 */
+	function beforeInsert(&$model)
+	{
+		if (!$this->enforceUnique) 
+			return;
+		if ($indexes = $this->indexes($model)) 
+			foreach ($indexes as $index)
+				if (isset($index['unique']) && $index['unique']) 
+					if ($conditions = $model->getAttributes($index[0]))
+						if ($model::exists($conditions))
+							throw new Duplicate;
+	}
+	
+	function afterSave(&$model)
+	{
+		if ($indexes = $this->indexes($model)) 
+		{
+			foreach ($indexes as $options) 
+			{
+				$index = $options[0];
+				
+				// index multiple things at once, e.g. User:username:$username:password:$password
+				$dirty = false;
+				if (is_array($index)) 
 				{
-					Log::warning(get_class($model) . ' indexes non-existent attribute ' . $index);
+					$key = $model->getAttributes($index);
+					
+					// Check to see if any of them are dirty
+					foreach ($key as $attr => $value) 
+					{
+						if ($model->isDirty($attr)) 
+						{
+							$dirty = true;
+							break;
+						}
+					}
+				}
+				
+				elseif (is_string($index))
+				{
+					$dirty = $model->isDirty($index);
+					$key = $model->getAttributes(array($index));
+				}
+				
+				if ($dirty) 
+				{
+					if ($this->ignoreCase || (isset($options['ignoreCase']) && $options['ignoreCase']))
+					{
+						$key = array_map('strtolower', $key);
+					}
+					
+					// Remove the old index
+					if ($oldKey = array_intersect($model->meta('originals'), $key)) 
+					{
+						$model::table()->rem($oldKey);
+					}
+					
+					// Set the new index
+					$model::table()->set($key, $model->id);
 				}
 			}
 		}

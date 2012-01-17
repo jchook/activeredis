@@ -6,30 +6,40 @@ class Table {
 	
 	protected static $instances;
 	
-	public $name;
+	public $name; // name of this table
 	public $model; // class name
 	public $database; // name
+	public $separator = ':'; // key separator
 	public $callbacks;
-	public $behaviors = array('AutoAssociate' => true, 'AutoTimestamp' => true, 'DeepSave' => true, 'SaveIndexes' => true);
-	public $separator = ':';
-	public $associations;
+	public $behaviors = array('AutoAssociate' => true, 'AutoTimestamp' => true, 'DeepSave' => true, 'IndexKeys' => true);
 	public $attributes;
+	public $associations;
+	public $primaryKey;
 	
 	function __construct(array $inject = null)  
 	{
+		// Index of non-injected vars
 		$build = array_flip(array('behaviors', 'associations'));
 		
+		// Standard injection service
 		if ($inject)
 			foreach ($inject as $var => $val)
 				if (is_string($var) && !isset($build[$var]))
 					$this->$var = $val;
 		
+		// Add associations
 		if (isset($inject['associations'])) {
 			$this->addAssociations($inject['associations']);
 		}
+		
+		// Add behaviors
 		if (isset($inject['behaviors'])) {
 			$this->addBehaviors($inject['behaviors']);
 		}
+		
+		// Experimental: Attach the model as its own behavior
+		// $model = $this->model;
+		// $model::attach($this);
 		
 		Log::debug($this->model . ' Table loaded');
 	}
@@ -61,9 +71,9 @@ class Table {
 	 * 
 	 * @return Database
 	 */
-	static function db() 
+	function db() 
 	{
-		return Database::instance();
+		return Database::instance($this->database);
 	}
 	
 	/**
@@ -193,7 +203,8 @@ class Table {
 				
 				// Remove the behavior by setting options to false
 				if ($options === false) {
-					isset($this->behaviors[$behavior]) and unset($this->behaviors[$behavior]);
+					if (isset($this->behaviors[$behavior]))
+						unset($this->behaviors[$behavior]);
 					Log::vebug($this->model . ' removed behavior ' . $behaviorClass);
 				} 
 				
@@ -266,7 +277,15 @@ class Table {
 	 * @return string
 	 */
 	function key($subkeys = null)  {
-		return implode($this->separator, array_flatten(array_merge((array) $this->name, (array) $subkeys)));
+		if (is_array($subkeys)) {
+			ksort($subkeys);
+			$subkeys = array_estrange($subkeys, false);
+		}
+		return implode($this->separator, array_flatten(array($this->name, $subkeys)));
+	}
+	
+	function rem($id) {
+		return $this->db()->rem($this->key($id));
 	}
 	
 	function set($id, $value) {
@@ -275,6 +294,10 @@ class Table {
 	
 	function get($id) {
 		return $this->db()->get($this->key($id));
+	}
+	
+	function exists($id) {
+		return $this->db()->exists($this->key($id));
 	}
 	
 	function insert(Model $model) {

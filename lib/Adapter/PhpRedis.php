@@ -1,8 +1,9 @@
 <?php
 
-namespace ActiveRedis;
+namespace ActiveRedis\Adapter;
+use ActiveRedis;
 
-class Adapter\PhpRedis extends Adapter
+class PhpRedis extends Adapter
 {
 	protected $db;
 	protected $config;
@@ -18,7 +19,7 @@ class Adapter\PhpRedis extends Adapter
 		
 		// But make a new Redis by default
 		else {
-			$this->db = new Redis;
+			$this->db = new \Redis;
 		}
 		
 		// Store the config for later
@@ -37,7 +38,7 @@ class Adapter\PhpRedis extends Adapter
 			foreach ($init as $fn) {
 				if (is_string($fn)) {
 					if (isset($this->config[$fn])) {
-						call_user_func_array(array($this->db, $fn), array_force($this->config[$fn]));
+						call_user_func_array(array($this->db, $fn), ActiveRedis\array_force($this->config[$fn]));
 					}
 				} elseif (is_callable($fn)) {
 					$fn($this);

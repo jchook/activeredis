@@ -35,9 +35,7 @@ abstract class Model {
 	/**
 	 * Create an instance of this model
 	 * 
-	 * @param mixed $id primary key value or an array of attribute => value pairs.
-	 *                  NOTE that if you want to add association objects, you must
-	 *                  do this outside of the object construction, or via create.
+	 * @param mixed $id primary key or array of property => value pairs
 	 */
 	function __construct($id = null, $isNew = true) 
 	{	
@@ -48,6 +46,8 @@ abstract class Model {
 		} elseif ($id) {
 			$this->primaryKeyValue($id);
 		}
+		
+		$this->trigger('afterConstruct');
 	}
 	
 	/**
@@ -132,7 +132,7 @@ abstract class Model {
 			if (method_exists(get_called_class(), $fn)) {
 				return call_user_func_array('static::' . $fn, $args);
 			} else {
-				return static::findBy(explode('_', $fn), $args);
+				return static::find(array(explode('_', $fn), $args));
 			}
 		}
 	}
@@ -158,6 +158,9 @@ abstract class Model {
 	 */
 	public function trigger($eventName, $args = null)
 	{
+		if (is_callable($localCallback = array($this, $eventName)))
+			if (false === call_user_func_array($localCallback, $args))
+				return false;
 		return static::table()->trigger($eventName, array_force($args));
 	}
 	
@@ -184,21 +187,52 @@ abstract class Model {
 	/**
 	 * Create a new instance of this model
 	 * Automatically saves to the database
+	 * 
+	 * @param mixed $config
+	 * @param bool $save
+	 * @return static
 	 */
 	public static function create($config = null, $save = true) 
 	{
 		$class = get_called_class();
-		$model = new $class;
+		$model = new $class($config);
 		$save and $model->save();
+		$model->trigger('afterCreate', array($model));
 		return $model;
+	}
+	
+	/**
+	 * Determine if a given key exists in this model's namespace
+	 * 
+	 * @param string|array $id
+	 * @return bool
+	 */
+	public static function exists($id)
+	{
+		return (bool) static::db()->exists(static::table()->key($id));
+	}
+	
+	/**
+	 * Retrieve a record from the database as an instance
+	 * of the called class.
+	 * 
+	 * @param string|array $id
+	 * @return static
+	 * @throws NotFound
+	 */
+	public static function read($id)
+	{
+		if ($model = static::find($id)) {
+			return $model;
+		}
+		throw new NotFound;
 	}
 	
 	/**
 	 * Retrieve a record by primary key value and instantiate it
 	 * 
-	 * @param mixed $id
-	 * @return Model
-	 * @throws NotFound
+	 * @param string|array $id
+	 * @return static
 	 */
 	public static function find($id) 
 	{
@@ -207,54 +241,27 @@ abstract class Model {
 		if ($data = static::db()->get(static::table()->key($id))) {
 			$model = new $class(static::unserialize($data));
 			static::trigger('afterFind', array($model));
+			return $model;
 		}
-		
-		// Not found!
-		throw new NotFound;
 	}
 	
 	/**
 	 * Retrieve all of the records and instantiate them
 	 */
-	public static function findAll($ids)
+	public static function readAll($ids)
 	{
-		return array_map('static::find', $ids);
+		return array_map('static::read', $ids);
 	}
 	
 	/**
 	 * Find any records matching an id within the given set.
-	 * DOES NOT throw NotFound
 	 * 
 	 * @param array $ids
 	 * @return array
 	 */
 	public static function findAny($ids)
 	{
-		$ids = (array) $ids;
-		$result = array();
-		foreach ($ids as $id) {
-			try {
-				if ($temp = static::find($id)) {
-					$result[] = $temp;
-				}
-			} catch (NotFound $e) {}
-		}
-		return $result;
-	}
-	
-	/**
-	 * Find by functions do not throw an exception
-	 * 
-	 * @param string $keyPrefix
-	 * @param string $keySuffix
-	 * @return mixed
-	 */
-	public static function findBy($keyPrefix, $keySuffix)
-	{
-		try {
-			return static::find(array($keyPrefix, $keySuffix));
-		} catch(NotFound $e) {}
-		return null;
+		return array_filter(array_map('static::find', (array) $ids));
 	}
 	
 	/**
@@ -357,14 +364,14 @@ abstract class Model {
 	 * attributes will be excluded from the returned array.
 	 * 
 	 * EX:
-	 * $model->c = 'hello';
-	 * $model->getAttributes(array('a', 'b' => null, 'c' => 'default'));
-	 * // yields array('b' => null, 'c' => 'hello')
+	 *  $model->c = 'hello';
+	 *  $model->getAttributes(array('a', 'b' => null, 'c' => 'default'));
+	 *  // yields array('b' => null, 'c' => 'hello')
 	 * 
 	 * @param array $list
 	 * @return array
 	 */
-	public function getAttributes($list) {
+	public function getAttributes(array $list) {
 		$result = array();
 		foreach ($list as $id => $val) {
 			if ($id && is_string($id)) {
@@ -373,6 +380,7 @@ abstract class Model {
 				$result[$val] = $this->getAttribute($val);
 			}
 		}
+		return $result;
 	}
 	
 	public function addAttribute($name, $value)
@@ -633,7 +641,7 @@ abstract class Model {
 		$data or $data = $this->toArray();
 		
 		// Run user validators
-		foreach ($data as $var => $val) {
+		foreach ($data as $var => &$val) {
 			if (method_exists($this, $validateMethod = 'validate' . ucfirst($var))) {
 				$result = $this->$validateMethod($val);
 				if ($result === false || ($result && is_string($result))) {
@@ -645,7 +653,6 @@ abstract class Model {
 		// Valid unless invalid
 		return true;
 	}
-	
 }
 
 ?>

@@ -2,6 +2,13 @@
 
 namespace ActiveRedis;
 
+/**
+ * Adapter
+ * 
+ * Use adapter classes to adapt non-standard Redis interfaces,
+ * for example if the method names do not match the actual Redis 
+ * commands.
+ */
 class Adapter 
 {
 	var $map;

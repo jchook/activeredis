@@ -11,7 +11,11 @@ ActiveRedis synthesizes a new, unorthodox implementation of the [Active record p
 
 ## License
 
-ActiveRedis is provided to you for limited use under the [MIT License](http://www.opensource.org/licenses/MIT). You are obligated to agree to the license. If you do not agree to the license, then you are not permitted download or use ActiveRedis.
+ActiveRedis is provided to you for limited use under the [MIT License](http://www.opensource.org/licenses/MIT). 
+
+This means ActiveRedis is free, both as in free beer and as in free speech. You are safe to use this as a component in free OR proprietary software, so long as all copies of the source (identical or not) retain the original license.
+
+The official license is located in the file called LICENSE. You are obligated to agree to the license. If you do not agree to the license, then you are not permitted download or use ActiveRedis.
 
 ## Development
 
@@ -39,7 +43,7 @@ include 'activeredis/ActiveRedis.php';
 // Configure Database Object
 // In this example we use Predis, but you can use almost any PHP Redis interface.
 // If you need to, customize ActiveRedis\Adapter to adapt weird Redis interfaces.
-ActiveRedis\Database::adapt(new Predis\Client);
+ActiveRedis\Database::connect(new Predis\Client);
 
 ```
 

@@ -54,6 +54,29 @@ namespace ActiveRedis {
 		return $array;
 	}
 	
+	function array_unique(array $ra) 
+	{
+		$found = array();
+		foreach ($ra as $key => $val)
+		{
+			$found[json_encode($val)] = true;
+		}
+		return array_keys($found);
+	}
+	
+	function array_estrange(array $ra, $includeNumbers = false)
+	{
+		$return = array();
+		foreach ($ra as $key => $value)
+		{
+			if ($includeNumbers || !is_numeric($key)) {
+				$return[] = $key;
+			}
+			$return[] = $value;
+		}
+		return $return;
+	}
+	
 	function array_blend($a, &$b)
 	{
 		foreach ($b as $index => $element) {

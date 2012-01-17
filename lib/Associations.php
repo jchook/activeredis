@@ -2,6 +2,30 @@
 
 namespace ActiveRedis;
 
+/**
+ * Association
+ * 
+ * Associations allow you to define meaningful relationships between
+ * models classes. For example, 'HasOne User', or 'HasMany Orders'.
+ * 
+ * You can define your own types of associations easily. Simply extend
+ * and implement the ActiveRedis\Association class.
+ * 
+ * Defining associations is easy. In your model class, simply add...
+ * 	static $associations = array('AssociationClass ForeignModelClass', ...);
+ * 
+ * Replace AssociationClass with the appropriate class name, such as HasMany,
+ * and replace ForeignModelClass with the actual foreign model class name.
+ * When AssociationClass::$poly == true, ForeignModelClass is pluralized.
+ * 
+ * If your association requires configuration, make the association 
+ * statement the first element of the configuration array, such as:
+ * 	static $associations = array(array('HasMany Users', 'name' => 'owner', ...), ...);
+ * 
+ * @see HasOne
+ * @see HasMany
+ * @see BelongsTo
+ */
 abstract class Association 
 {
 	public static $poly = false;
@@ -49,29 +73,45 @@ abstract class Association
 	
 	/**
 	 * Attach this association to a table
+	 * 
+	 * @param Table $table
+	 * @return null
 	 */
-	function attach(Table $table) {}
+	function attach($table) {}
 	
 	/**
 	 * Associate a left-side model with a right-side model
+	 * 
+	 * @param Model $left
+	 * @param Model $right
+	 * @return null
 	 */
-	function associate(Model $left, Model $right) {}
+	function associate($left, $right) {}
 	
 	/**
-	 * Get the "right-side" objects associated with the "left-side"
+	 * Get the "right-side" objects associated with a "left-side" object
+	 * 
+	 * @param Model $left
+	 * @return array|null associated objects
 	 */
-	function associated(Model $left) {}
+	function associated($left) {}
 	
 	/**
 	 * Called whenever a "left-side" model is constructed
+	 * 
+	 * @param Model $left
+	 * @return array|null associated objects
 	 */
-	function autoload(Model $left) 
+	function autoload($left) 
 	{
 		return $this->eager ? $this->associated($left) : null;
 	}
 	
 	/**
 	 * Returned by the left model when a user accesses the association
+	 * 
+	 * @param Model $left optional
+	 * @return Association $this
 	 */
 	function delegate($left = null) 
 	{
