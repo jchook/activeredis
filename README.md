@@ -11,22 +11,8 @@ ActiveRedis synthesizes a new, unorthodox implementation of the [Active record p
 
 ## License
 
-ActiveRedis is provided to you for limited use under the [MIT License](http://www.opensource.org/licenses/MIT). 
+ActiveRedis is free to use under the [MIT License](http://www.opensource.org/licenses/MIT). 
 
-This means ActiveRedis is free, both as in free beer and as in free speech. You are safe to use this as a component in free OR proprietary software, so long as all copies of the source (identical or not) retain the original license.
-
-The official license is located in the file called LICENSE. You are obligated to agree to the license. If you do not agree to the license, then you are not permitted download or use ActiveRedis.
-
-## Development
-
-ActiveRedis is currently in its infancy.
-
-However, it is being actively developed. Feel free to fork & join in the fun. Some planned features:
-
-* Model Associations (nearly finished)
-* Indexing (naive version in progress)
-** Eventually indexing will be configurable, allowing the programmer to specify case-sensitivity, key filters, whether the indexed value is unique, which property to associate with the index (id by default of course), etc.
-* Bubbling events
 
 ## Installation
 
@@ -65,7 +51,7 @@ The model classes can be quite simple.
 // Create
 $human = Human::create(array(
 	'name' => 'Wes',
-	'age' => 24,
+	'age' => 25,
 ));
 
 // Retrieve
@@ -77,6 +63,27 @@ $human->save();
 
 // Delete
 $human->delete();
+
+```
+
+### Indexes
+
+Since Redis is NoSQL, you cannot use a WHERE clause to query for data. Instead, ActiveRedis provides Indexes which automatically index data in a customizable way.
+
+Note that indexes are a new feature that has not been tested.
+
+```php
+<?php
+
+class User extends ActiveRedis\Model {
+	static $indexes = array('name');
+}
+
+// Once the user is created...
+$user = User::create(array('name' => 'Wesley Roberts'));
+
+// It is possible to find the user by name
+$user = User::find(array('name' => 'Wesley Roberts'));
 
 ```
 
@@ -142,23 +149,3 @@ class CustomBehavior extends ActiveRedis\Behavior {
 If you create your own Model class that extends ActiveRedis\Model, it's easy to trigger your own custom events via ```$this->trigger('eventName', $arguments');```.
 
 
-### Indexes
-
-Since Redis is NoSQL, you cannot use a WHERE clause to query for data. Instead, ActiveRedis provides Indexes which automatically index data in a customizable way.
-
-Note that indexes are a new feature that has not been tested.
-
-```php
-<?php
-
-class User extends ActiveRedis\Model {
-	static $indexes = array('name');
-}
-
-// Once the user is created...
-$user = User::create(array('name' => 'Wesley Roberts'));
-
-// It is possible to find the user by name
-$user = User::find(array('name' => 'Wesley Roberts'));
-
-```
