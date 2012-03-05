@@ -414,7 +414,7 @@ abstract class Model {
 		if ($makeDirty && (!isset($this->attributes[$name]) || ($this->attributes[$name] !== $value))) {
 			$this->isDirty[$name] = true;
 		}
-		Log::vebug(get_class($this) . ' ' . __FUNCTION__ . ' ' . $name . ' = ' . json_encode($value));
+		// Log::vebug(get_class($this) . ' ' . __FUNCTION__ . ' ' . $name . ' = ' . json_encode($value));
 		return $this->attributes[$name] = $value;
 	}
 	
