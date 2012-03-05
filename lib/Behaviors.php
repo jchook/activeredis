@@ -247,7 +247,12 @@ class SaveIndexes extends Behavior
 					}
 					
 					// Set the new index
-					$model::table()->set($key, $model->id);
+					if ($this->unique || (isset($options['unique']) && $options['unique'])) {
+						$model::table()->set($key, $model->id);
+					} else {
+						$model::table()->set($key, $model->id);
+					}
+					
 				}
 			}
 		}
@@ -276,7 +281,7 @@ class DeepSave extends Behavior
 			
 			if ($associations = $model->table()->associations()) 
 			{
-				Log::info(get_class($model) . ' is deep-saving ' . json_encode(array_keys($associations)));
+				Log::vebug(get_class($model) . ' ' . get_called_class() . ' ' . json_encode(array_keys($associations)));
 				foreach ($associations as $name => $association) 
 				{
 					if ($name && is_string($name) && ($associatedModels = $model->associated($name))) 

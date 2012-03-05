@@ -32,14 +32,14 @@ class Connection
 	{
 		fclose($this->connection);
 	}
-
+	
 	public function __call($name, $args)
 	{
 		$response = null;
 
 		$name = strtoupper($name);
 		
-		Log::debug($name . json_encode($args));
+		Log::query($name . json_encode($args));
 		
 		$command = '*' . (count($args) + 1) . self::CRLF;
 		$command .= '$' . strlen($name) . self::CRLF;

@@ -33,4 +33,7 @@ print_r($read->toArray());
 $read->name = 'other name';
 $read->save();
 
+$read = User::find(array('name' => 'other name'));
+print_r($read->toArray());
+
 ?>

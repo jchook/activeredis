@@ -45,7 +45,9 @@ abstract class Model {
 			$this->populate($id);
 		} elseif ($id) {
 			$this->primaryKeyValue($id);
-			$this->reload();
+			if ($isNew === false) {
+				$this->reload();
+			}
 		}
 		
 		$this->trigger('afterConstruct', array($this));
@@ -266,6 +268,20 @@ abstract class Model {
 	}
 	
 	/**
+	 * Serialize a model for storage in the database
+	 * 
+	 * @return string
+	 */
+	public function serialize() 
+	{
+		return $this::serializeData($this->toArray());
+	}
+	public static function serializeData($data)
+	{
+		return json_encode($data);
+	}
+	
+	/**
 	 * Unserialize data from the database
 	 * 
 	 * @param string $data
@@ -273,17 +289,12 @@ abstract class Model {
 	 */
 	public static function unserialize($data) 
 	{
-		return new static(json_decode($data), false);
+		return new static(static::unserializeData($data), false);
 	}
 	
-	/**
-	 * Serialize a model for storage in the database
-	 * 
-	 * @return string
-	 */
-	public function serialize() 
+	public static function unserializeData($data) 
 	{
-		return json_encode($this->toArray());
+		return json_decode($data, true);
 	}
 	
 	/**
@@ -539,7 +550,7 @@ abstract class Model {
 				return false;
 			}
 		}
-		Log::debug('save');
+		Log::debug(get_class($this) . ' save');
 		$isNew = $this->isNew();
 		if ($isNew || $this->isDirty()) 
 		{
@@ -594,8 +605,10 @@ abstract class Model {
 	{
 		Log::debug(get_class($this) . ' reload');
 		if ($data = $this::table()->get($this->primaryKeyValue())) {
-			$this->populate(json_decode($data, true));
+			$this->populate($this::unserializeData($data));
 		}
+		$this->isNew = false;
+		$this->isDirty = null;
 	}
 	
 	/**
