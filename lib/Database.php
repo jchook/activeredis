@@ -16,7 +16,7 @@ class Database
 	public static function adapt($db, $name = null)
 	{
 		// Eventally this should be smart about using the appropriate adapter based on the class name of $db
-		return static::connect(new Adapter($db), $name ?: ++static::$default);
+		return static::add(new Adapter($db), $name ?: ++static::$default);
 	}
 	
 	/**
@@ -26,13 +26,13 @@ class Database
 	 * @param key $alias
 	 * @param key $actualName
 	 */
-	public static function alias($alias, $actualName)
+	public static function alias($alias, $actualName = null)
 	{
-		static::$db[$alias] =& static::$db[$actualName];
+		static::$db[$alias] =& static::$db[$actualName ?: static::$default];
 	}
 	
 	/**
-	 * Connect a raw Redis interface to ActiveRedis
+	 * Add a raw Redis interface object to ActiveRedis
 	 * NOTE: It is best to use an adapter for compatibility reasons
 	 * 
 	 * @see Database::adapt()
@@ -40,9 +40,35 @@ class Database
 	 * @param key $name optional
 	 * @return bool
 	 */
-	public static function connect($db, $name = null)
+	public static function add($db, $name = null)
 	{
 		return static::$db[$name ?: ++static::$default] = $db;
+	}
+	
+	/**
+	 * Connect to Redis
+	 * 
+	 * @param string|array $config ex: '127.0.0.1:6379'
+	 * @param string|null $name the instance name of the database connection
+	 * @return Connection|null
+	 */
+	public static function connect($config = null, $name = null)
+	{
+		if ($config) {
+			if (is_string($config)) {
+				$config = parse_url($config);
+				if (!isset($config['host']) && isset($config['path'])) {
+					$config['host'] = $config['path'];
+					$config['path'] = '';
+				}
+			}
+			if (is_array($config)) {
+				return static::add(new Connection(array_merge(array(
+						'host' => '127.0.0.1',
+						'port' => 6379,
+					), $config)), $name);
+			}
+		}
 	}
 	
 	/**

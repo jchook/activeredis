@@ -91,10 +91,13 @@ class AutoAssociate extends Behavior
 
 class SaveIndexes extends Behavior
 {
+	static $bind = array('afterConstruct', 'beforeInsert', 'beforeSave', 'afterSave');
+	
 	public $enforceUnique = true;
 	public $ignoreCase = null;
 	
 	protected $indexes;
+	protected $indexedAttributes;
 	
 	// 'username',
 	// array('username')
@@ -119,29 +122,87 @@ class SaveIndexes extends Behavior
 					$this->indexes[] = $index;
 				}
 			}
+			
+			$this->indexes = \array_unique($this->indexes);
 		}
 		
-		return \ActiveRedis\array_unique($this->indexes);
+		return $this->indexes;
 	}
 	
-	function afterConstruct(&$model)
+	function afterConstruct($model)
 	{
-		if ($indexes = (array) $this->indexes($model)) 
-		{
+		if ($model->isNew()) {
 			$originals = array();
-			foreach ($indexes as $index) 
+		} else {
+			$indexedAttributes = $this->indexedAttributes($model);
+			$originals = $this->indexValues($model, $indexedAttributes);
+		}
+		$model->meta('SaveIndexesOriginals', $originals);
+	}
+	
+	protected function indexedAttributes($model)
+	{
+		if ($model && is_null($this->indexedAttributes)) {
+			$indexedAttributes = array();
+			if ($indexes = $this->indexes($model)) {
+				foreach ($indexes as $indexKey => $options) {
+					$indexedAttributes = \array_merge($indexedAttributes, (array) $options[0]);
+				}
+			}
+			$this->indexedAttributes = \array_unique($indexedAttributes);
+		}
+		return $this->indexedAttributes;
+	}
+	
+	protected function indexValues($model, $index)
+	{
+		$storageValue = array();
+		$raw = $model->getAttributes((array) $index);
+		foreach ($raw as $attr => $val) {
+			if (is_object($val) && isset($val->id)) {
+				$storageValue[$attr] = $val->id;
+			} else {
+				$storageValue[$attr] = $val;
+			}
+		}
+		return $storageValue;
+	}
+	
+	function beforeSave(&$model)
+	{
+		$dirty = array();
+		
+		if ($indexes = $this->indexes($model)) 
+		{
+			foreach ($indexes as $indexKey => $options) 
 			{
+				$index = $options[0];
+				echo "indexKey: $indexKey\n";
+
+				// index multiple things at once, e.g. User:username:$username:password:$password
 				if (is_array($index)) 
 				{
-					$originals = array_merge($originals, $model->getAttributes($index));
+					// Check to see if any of them are dirty
+					foreach ($index as $attr) 
+					{
+						if ($model->isNew() || $model->isDirty($attr)) 
+						{
+							$dirty[] = $indexKey;
+							break;
+						}
+					}
 				}
-				else
+
+				elseif (is_string($index))
 				{
-					$originals[$index] = $model->attr($index);
+					if ($model->isDirty($index)) {
+						$dirty[] = $indexKey;
+					}
 				}
 			}
 		}
-		$model->meta('originals', $originals);
+		
+		$model->meta('SaveIndexesDirty', $dirty);
 	}
 	
 	/**
@@ -165,44 +226,24 @@ class SaveIndexes extends Behavior
 	{
 		if ($indexes = $this->indexes($model)) 
 		{
-			foreach ($indexes as $options) 
-			{
-				$index = $options[0];
-				
-				// index multiple things at once, e.g. User:username:$username:password:$password
-				$dirty = false;
-				if (is_array($index)) 
-				{
-					$key = $model->getAttributes($index);
+			if ($dirty = $model->meta('SaveIndexesDirty')) 
+			{	
+				foreach ($dirty as $indexKey) 
+				{	
+					$options = $indexes[$indexKey];
+					$index = $options[0];
 					
-					// Check to see if any of them are dirty
-					foreach ($key as $attr => $value) 
-					{
-						if ($model->isDirty($attr)) 
-						{
-							$dirty = true;
-							break;
-						}
-					}
-				}
-				
-				elseif (is_string($index))
-				{
-					$dirty = $model->isDirty($index);
-					$key = $model->getAttributes(array($index));
-				}
-				
-				if ($dirty) 
-				{
+					$key = $model->getAttributes((array) $index);
+
 					if ($this->ignoreCase || (isset($options['ignoreCase']) && $options['ignoreCase']))
 					{
 						$key = array_map('strtolower', $key);
 					}
 					
 					// Remove the old index
-					if ($oldKey = array_intersect($model->meta('originals'), $key)) 
+					if ($oldKey = array_intersect_key($model->meta('SaveIndexesOriginals'), $key)) 
 					{
-						$model::table()->rem($oldKey);
+						$model::table()->del($oldKey);
 					}
 					
 					// Set the new index
