@@ -68,8 +68,6 @@ $human->delete();
 
 Since Redis is NoSQL, you cannot use a WHERE clause to query for data. Instead, ActiveRedis provides Indexes which automatically index data in a customizable way.
 
-Note that indexes are a new feature that has not been tested.
-
 ```php
 <?php
 
