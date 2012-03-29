@@ -45,9 +45,12 @@ abstract class Model {
 			$this->populate($id);
 		} elseif ($id) {
 			$this->primaryKeyValue($id);
+			if ($isNew === false) {
+				$this->reload();
+			}
 		}
 		
-		$this->trigger('afterConstruct');
+		$this->trigger('afterConstruct', array($this));
 	}
 	
 	/**
@@ -239,7 +242,7 @@ abstract class Model {
 		// Instantiate new class
 		$class = get_called_class();
 		if ($data = static::db()->get(static::table()->key($id))) {
-			$model = new $class(static::unserialize($data));
+			$model = static::unserialize($data);
 			static::trigger('afterFind', array($model));
 			return $model;
 		}
@@ -265,6 +268,20 @@ abstract class Model {
 	}
 	
 	/**
+	 * Serialize a model for storage in the database
+	 * 
+	 * @return string
+	 */
+	public function serialize() 
+	{
+		return $this::serializeData($this->toArray());
+	}
+	public static function serializeData($data)
+	{
+		return json_encode($data);
+	}
+	
+	/**
 	 * Unserialize data from the database
 	 * 
 	 * @param string $data
@@ -272,17 +289,12 @@ abstract class Model {
 	 */
 	public static function unserialize($data) 
 	{
-		return new static(json_decode($data), false);
+		return new static(static::unserializeData($data), false);
 	}
 	
-	/**
-	 * Serialize a model for storage in the database
-	 * 
-	 * @return string
-	 */
-	public function serialize($data) 
+	public static function unserializeData($data) 
 	{
-		return json_encode($this->toArray());
+		return json_decode($data, true);
 	}
 	
 	/**
@@ -332,7 +344,7 @@ abstract class Model {
 	 */
 	public function &meta($key, $set = null)
 	{
-		Log::vebug(get_class($this) . '::' . __FUNCTION__ . "($key, " . json_encode($set) . ")");
+		Log::vebug(get_class($this) . ' ' . __FUNCTION__ . "($key, " . json_encode($set) . ")");
 		if (!is_null($set)) {
 			$this->meta[$key] = $set;
 			return $this->meta[$key];
@@ -413,6 +425,7 @@ abstract class Model {
 		if ($makeDirty && (!isset($this->attributes[$name]) || ($this->attributes[$name] !== $value))) {
 			$this->isDirty[$name] = true;
 		}
+		// Log::vebug(get_class($this) . ' ' . __FUNCTION__ . ' ' . $name . ' = ' . json_encode($value));
 		return $this->attributes[$name] = $value;
 	}
 	
@@ -537,7 +550,7 @@ abstract class Model {
 				return false;
 			}
 		}
-		Log::debug('save');
+		Log::debug(get_class($this) . ' save');
 		$isNew = $this->isNew();
 		if ($isNew || $this->isDirty()) 
 		{
@@ -586,6 +599,16 @@ abstract class Model {
 			// $this->dirty = false;
 			return $success;
 		}
+	}
+	
+	function reload()
+	{
+		Log::debug(get_class($this) . ' reload');
+		if ($data = $this::table()->get($this->primaryKeyValue())) {
+			$this->populate($this::unserializeData($data));
+		}
+		$this->isNew = false;
+		$this->isDirty = null;
 	}
 	
 	/**

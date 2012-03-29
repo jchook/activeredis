@@ -26,10 +26,8 @@ ActiveRedis is free to use under the [MIT License](http://www.opensource.org/lic
 // Initialize
 include 'activeredis/ActiveRedis.php';
 
-// Configure Database Object
-// In this example we use Predis, but you can use almost any PHP Redis interface.
-// If you need to, customize ActiveRedis\Adapter to adapt weird Redis interfaces.
-ActiveRedis\Database::connect(new Predis\Client);
+// Connect to Redis
+ActiveRedis\Database::connect('127.0.0.1:6379');
 
 ```
 
@@ -69,8 +67,6 @@ $human->delete();
 ### Indexes
 
 Since Redis is NoSQL, you cannot use a WHERE clause to query for data. Instead, ActiveRedis provides Indexes which automatically index data in a customizable way.
-
-Note that indexes are a new feature that has not been tested.
 
 ```php
 <?php

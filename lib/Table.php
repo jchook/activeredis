@@ -11,7 +11,7 @@ class Table {
 	public $database; // name
 	public $separator = ':'; // key separator
 	public $callbacks;
-	public $behaviors = array('AutoAssociate' => true, 'AutoTimestamp' => true, 'DeepSave' => true, 'IndexKeys' => true);
+	public $behaviors = array('AutoAssociate' => true, 'AutoTimestamp' => true, 'DeepSave' => true, 'SaveIndexes' => true);
 	public $attributes;
 	public $associations;
 	public $primaryKey;
@@ -34,7 +34,7 @@ class Table {
 		
 		// Add behaviors
 		if (isset($inject['behaviors'])) {
-			$this->addBehaviors($inject['behaviors']);
+			$this->addBehaviors($inject['behaviors'] ?: $this->behaviors);
 		}
 		
 		// Experimental: Attach the model as its own behavior
@@ -284,8 +284,8 @@ class Table {
 		return implode($this->separator, array_flatten(array($this->name, $subkeys)));
 	}
 	
-	function rem($id) {
-		return $this->db()->rem($this->key($id));
+	function del($id) {
+		return $this->db()->del($this->key($id));
 	}
 	
 	function set($id, $value) {
