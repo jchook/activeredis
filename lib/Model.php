@@ -50,7 +50,7 @@ abstract class Model {
 			}
 		}
 		
-		$this->trigger('afterConstruct', array($this));
+		$this::trigger('afterConstruct', array($this));
 	}
 	
 	/**
@@ -65,7 +65,7 @@ abstract class Model {
 		}
 		
 		// Association
-		elseif ($association = $this->table()->association($var)) {
+		elseif ($association = $this::table()->association($var)) {
 			$this->isDirty[$var] = true;
 			if (!isset($this->associated[$var])) {
 				$this->associated[$var] = $association->associated($this);
@@ -102,7 +102,7 @@ abstract class Model {
 		}
 		
 		// Association
-		elseif ($association = $this->table()->association($var)) {
+		elseif ($association = $this::table()->association($var)) {
 			$this->isDirty[$var] = true;
 			return $this->associated[$var] = $val;
 		}
@@ -159,11 +159,8 @@ abstract class Model {
 	 * @param mixed $args null | array of arguments
 	 * @return mixed
 	 */
-	public function trigger($eventName, $args = null)
+	public static function trigger($eventName, $args = null)
 	{
-		if (is_callable($localCallback = array($this, $eventName)))
-			if (false === call_user_func_array($localCallback, $args))
-				return false;
 		return static::table()->trigger($eventName, array_force($args));
 	}
 	
@@ -311,7 +308,7 @@ abstract class Model {
 			if (isset($this->associated[$name])) {
 				return $this->associated[$name];
 			}
-			if ($association = $this->table()->association($name)) {
+			if ($association = $this::table()->association($name)) {
 				$args = func_get_args();
 				$args[0] = $this;
 				$this->associated[$name] = call_user_func_array(array($association, 'associated'), $args);
@@ -477,7 +474,7 @@ abstract class Model {
 			if ($value = $this->getAttribute($this->primaryKey())) {
 				return $value;
 			}
-			$setValue = $this->table()->nextUnique($this->primaryKey());
+			$setValue = $this::table()->nextUnique($this->primaryKey());
 		}
 		return $this->setAttribute($this->primaryKey(), $setValue);
 	}
@@ -496,7 +493,7 @@ abstract class Model {
 	function key(/* polymorphic */) 
 	{
 		$keys = array_flatten(array($this->primaryKeyValue(), func_get_args()));
-		return $this->table()->key($keys);
+		return $this::table()->key($keys);
 	}
 	
 	/**
@@ -554,7 +551,7 @@ abstract class Model {
 		$isNew = $this->isNew();
 		if ($isNew || $this->isDirty()) 
 		{
-			$this->trigger('beforeSave', array(&$this, $isNew));
+			$this::trigger('beforeSave', array(&$this, $isNew));
 			if ($this->isNew()) {
 				$result = $this->insert();
 			} else {
@@ -562,7 +559,7 @@ abstract class Model {
 			}
 			$this->isNew = false;
 			$this->isDirty = array();
-			$this->trigger('afterSave', array(&$this, $isNew, $result));
+			$this::trigger('afterSave', array(&$this, $isNew, $result));
 			return $result;
 		}
 		Log::debug(get_class($this) . ' save() called unnecessarily');
@@ -577,7 +574,7 @@ abstract class Model {
 	protected function insert() 
 	{
 		Log::debug(get_class($this) . ' insert');
-		if ($success = $this->table()->insert($this)) {
+		if ($success = $this::table()->insert($this)) {
 			// $this->isNew = false;
 			// $this->isDirty = false;
 			return $success;
@@ -595,7 +592,7 @@ abstract class Model {
 		if ($this->isNew()) {
 			throw new Exception('Cannot update new record');
 		}
-		if ($success = $this->table()->update($this)) {
+		if ($success = $this::table()->update($this)) {
 			// $this->dirty = false;
 			return $success;
 		}

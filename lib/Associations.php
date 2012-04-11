@@ -77,7 +77,7 @@ abstract class Association
 	 * @param Table $table
 	 * @return null
 	 */
-	function attach($table) {}
+	function attach(Table $table) {}
 	
 	/**
 	 * Associate a left-side model with a right-side model
@@ -86,7 +86,7 @@ abstract class Association
 	 * @param Model $right
 	 * @return null
 	 */
-	function associate($left, $right) {}
+	function associate(Model $left, Model $right) {}
 	
 	/**
 	 * Get the "right-side" objects associated with a "left-side" object
@@ -94,7 +94,7 @@ abstract class Association
 	 * @param Model $left
 	 * @return array|null associated objects
 	 */
-	function associated($left) {}
+	function associated(Model $left) {}
 	
 	/**
 	 * Called whenever a "left-side" model is constructed

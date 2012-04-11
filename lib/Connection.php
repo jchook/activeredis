@@ -18,23 +18,34 @@ class Connection
 	const CRLF = "\r\n";
 	
 	protected $connection = false;
+	protected $config;
 
 	public function  __construct(array $config = array())
 	{
-		$this->connection = @fsockopen($config['host'], $config['port'], $errno, $errstr);
-	
-		if ( ! $this->connection) {
-			throw new Exception($errstr, $errno);
-		}
+		$this->config = $config;
 	}
 
 	public function  __destruct()
 	{
-		fclose($this->connection);
+		if ($this->connection) {
+			fclose($this->connection);
+		}
+	}
+	
+	public function touch()
+	{
+		if (!$this->connection) {
+			if (false == ($this->connection = @fsockopen($this->config['host'], $this->config['port'], $errno, $errstr))) {
+				throw new Exception($errstr, $errno);
+			}
+			unset($this->config);
+		}
 	}
 	
 	public function __call($name, $args)
 	{
+		$this->touch();
+		
 		$response = null;
 
 		$name = strtoupper($name);

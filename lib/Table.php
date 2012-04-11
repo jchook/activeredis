@@ -107,7 +107,7 @@ class Table {
 		{	
 			Log::vebug($this->model . ' start triggering ' . count($callbacks) . ' callbacks for ' . $eventName);
 			
-			foreach ($callbacks as $index => $callback) {
+			foreach ($callbacks as $index => &$callback) {
 				Log::vebug($this->model . ' --> ' . $eventName . ' ' . $index . ' : ' . $callback);
 				if (($result = call_user_func_array($callback, $args)) === false) {
 					return false;

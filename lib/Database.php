@@ -55,20 +55,22 @@ class Database
 	public static function connect($config = null, $name = null)
 	{
 		if ($config) {
-			if (is_string($config)) {
+			if (strlen($config)) {
+				
+				// attempt to parse the url...
 				$config = parse_url($config);
-				if (!isset($config['host']) && isset($config['path'])) {
-					$config['host'] = $config['path'];
-					$config['path'] = '';
+				
+				// hmm, no scheme? try again.
+				if (!isset($config['scheme'])) {
+					$config = parse_url('tcp://' . $config);
 				}
 			}
-			if (is_array($config)) {
-				return static::add(new Connection(array_merge(array(
-						'host' => '127.0.0.1',
-						'port' => 6379,
-					), $config)), $name);
-			}
 		}
+		return static::add(new Connection(array_merge(array(
+			'scheme' => 'tcp',
+			'host' => '127.0.0.1',
+			'port' => 6379,
+		), (array) $config)), $name);
 	}
 	
 	/**

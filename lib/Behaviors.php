@@ -177,7 +177,6 @@ class SaveIndexes extends Behavior
 			foreach ($indexes as $indexKey => $options) 
 			{
 				$index = $options[0];
-				echo "indexKey: $indexKey\n";
 
 				// index multiple things at once, e.g. User:username:$username:password:$password
 				if (is_array($index)) 
