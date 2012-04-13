@@ -1,9 +1,8 @@
 <?php
 
-namespace ActiveRedis\Adapter;
-use ActiveRedis;
+namespace ActiveRedis;
 
-class PhpRedis extends Adapter
+class Adapter\PhpRedis extends Adapter
 {
 	protected $db;
 	protected $config;
