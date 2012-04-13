@@ -50,13 +50,13 @@ abstract class Model {
 			}
 		}
 		
-		$this::trigger('afterConstruct', array($this));
+		$this->trigger('afterConstruct', array($this));
 	}
 	
 	/**
 	 * Dynamic get attribute / association
 	 */
-	function &__get($var)
+	function __get($var)
 	{
 		// Dynamic Initialization
 		$method = 'get' . ucfirst($var);
@@ -159,9 +159,19 @@ abstract class Model {
 	 * @param mixed $args null | array of arguments
 	 * @return mixed
 	 */
-	public static function trigger($eventName, $args = null)
+	public function trigger($eventName, $args = null)
 	{
-		return static::table()->trigger($eventName, array_force($args));
+		$args = array_force($args);
+		
+		// Local callbacks
+		if (method_exists($this, $method = 'on' . ucfirst($eventName))) {
+			if (false === call_user_func_array(array($this, $method), $args)) {
+				return false;
+			}
+		}
+		
+		// Table callbacks
+		return $this::table()->trigger($eventName, array_merge(array(&$this), (array) $args));
 	}
 	
 	/**
@@ -197,7 +207,7 @@ abstract class Model {
 		$class = get_called_class();
 		$model = new $class($config);
 		$save and $model->save();
-		$model->trigger('afterCreate', array($model));
+		$model->trigger('afterCreate');
 		return $model;
 	}
 	
@@ -209,7 +219,7 @@ abstract class Model {
 	 */
 	public static function exists($id)
 	{
-		return (bool) static::db()->exists(static::table()->key($id));
+		return (bool) static::table()->exists($id);
 	}
 	
 	/**
@@ -238,9 +248,9 @@ abstract class Model {
 	{
 		// Instantiate new class
 		$class = get_called_class();
-		if ($data = static::db()->get(static::table()->key($id))) {
+		if ($data = static::table()->get($id)) {
 			$model = static::unserialize($data);
-			static::trigger('afterFind', array($model));
+			$model->trigger('afterFind');
 			return $model;
 		}
 	}
@@ -551,7 +561,7 @@ abstract class Model {
 		$isNew = $this->isNew();
 		if ($isNew || $this->isDirty()) 
 		{
-			$this::trigger('beforeSave', array(&$this, $isNew));
+			$this->trigger('beforeSave', array($isNew));
 			if ($this->isNew()) {
 				$result = $this->insert();
 			} else {
@@ -559,7 +569,7 @@ abstract class Model {
 			}
 			$this->isNew = false;
 			$this->isDirty = array();
-			$this::trigger('afterSave', array(&$this, $isNew, $result));
+			$this->trigger('afterSave', array($isNew, $result));
 			return $result;
 		}
 		Log::debug(get_class($this) . ' save() called unnecessarily');
