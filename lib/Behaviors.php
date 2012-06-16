@@ -168,7 +168,7 @@ class SaveIndexes extends Behavior
 		return $storageValue;
 	}
 	
-	function beforeSave(&$model)
+	function beforeSave($model)
 	{
 		$dirty = array();
 		
@@ -209,7 +209,7 @@ class SaveIndexes extends Behavior
 	 * 
 	 * @throws Duplicate
 	 */
-	function beforeInsert(&$model)
+	function beforeInsert($model)
 	{
 		if (!$this->enforceUnique) 
 			return;
@@ -221,7 +221,7 @@ class SaveIndexes extends Behavior
 							throw new Duplicate;
 	}
 	
-	function afterSave(&$model)
+	function afterSave($model)
 	{
 		if ($indexes = $this->indexes($model)) 
 		{
@@ -246,7 +246,7 @@ class SaveIndexes extends Behavior
 					}
 					
 					// Set the new index
-					if ($this->unique || (isset($options['unique']) && $options['unique'])) {
+					if ($this->enforceUnique || (isset($options['unique']) && $options['unique'])) {
 						$model::table()->set($key, $model->id);
 					} else {
 						$model::table()->set($key, $model->id);

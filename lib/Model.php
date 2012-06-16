@@ -8,6 +8,7 @@ abstract class Model {
 	protected $attributes;
 	protected $isDirty;
 	protected $isNew;
+	protected $meta;
 	
 	static $primaryKey = 'id';
 	static $keySeparator = ':';
@@ -17,25 +18,23 @@ abstract class Model {
 	// Still in planning phase
 	static $accessible;
 	
-	// Indexes
-	static $indexes; 
-	
-	// Callbacks
-	static $callbacks;
+	// Associations
+	static $associations;
 	
 	// Behaviors
 	static $behaviors;
 	
-	// Associations
-	static $associations;
+	// Callbacks
+	static $callbacks;
 	
-	// For meta information
-	protected $meta;
+	// Indexes
+	static $indexes;
 	
 	/**
 	 * Create an instance of this model
 	 * 
 	 * @param mixed $id primary key or array of property => value pairs
+	 * @param bool $load whether to load the record by ID from the DB
 	 */
 	function __construct($id = null, $isNew = true) 
 	{	
@@ -43,9 +42,12 @@ abstract class Model {
 		
 		if (is_array($id)) {
 			$this->populate($id);
+			if (!$isNew) {
+				$this->isDirty = null;
+			}
 		} elseif ($id) {
 			$this->primaryKeyValue($id);
-			if ($isNew === false) {
+			if (!$isNew) {
 				$this->reload();
 			}
 		}
@@ -135,7 +137,7 @@ abstract class Model {
 			if (method_exists(get_called_class(), $fn)) {
 				return call_user_func_array('static::' . $fn, $args);
 			} else {
-				return static::find(array(explode('_', $fn), $args));
+				return static::find(array_combine(explode('_', $fn), $args));
 			}
 		}
 	}
