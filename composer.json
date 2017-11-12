@@ -1,0 +1,22 @@
+{
+    "name": "jchook/activeredis",
+    "description": "ActiveRecord pattern with Redis",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Wes Roberts",
+            "email": "me@jchook.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {},
+    "require-dev": {
+        "psy/psysh": "^0.8.14"
+    },
+    "autoload": {
+        "psr-4": {
+            "ActiveRedis\\": "src/lib/"
+        }
+    }
+}

@@ -2,21 +2,21 @@
 
 [ActiveRedis](https://github.com/jchook/activeredis) is a PHP 5.3+ library that brings relational model abstraction to [Redis](http://redis.io/).
 
-* Simple
-* Lightweight
-* Extendable
+	* Simple
+	* Lightweight
+	* Extendable
 
 ActiveRedis synthesizes a new, unorthodox implementation of the [Active record pattern](http://en.wikipedia.org/wiki/Active_record_pattern), borrowing good features from other libraries, but incorporating the simplicity of Redis.
 
 ## License
 
-ActiveRedis is free to use under the [MIT License](http://www.opensource.org/licenses/MIT). 
+ActiveRedis is free to use under the [MIT License](http://www.opensource.org/licenses/MIT).
 
 
 ## Installation
 
-1. Clone activeredis into your project, or add it as a submodule.
-1. Add the following code to run once in your project:
+	1. Clone activeredis into your project, or add it as a submodule.
+	1. Add the following code to run once in your project:
 
 
 ```php
@@ -28,6 +28,7 @@ include 'activeredis/ActiveRedis.php';
 // Connect to Redis
 ActiveRedis\Database::connect('127.0.0.1:6379');
 
+?>
 ```
 
 ## Usage
@@ -37,7 +38,7 @@ ActiveRedis\Database::connect('127.0.0.1:6379');
 The model classes can be quite simple.
 
 ```php
-<?php class Human extends ActiveRedis\Model {} ?>
+<?php class Human extends ActiveRedis\Model {}
 ```
 
 ### CRUD: Create, Read, Update, Delete
@@ -130,11 +131,11 @@ class CustomModel extends ActiveRedis\Model {
 }
 
 class CustomBehavior extends ActiveRedis\Behavior {
-		
+
 	function attach($table) {
 		$table->bind('beforeSave', 'CustomBehavior::beforeSave');
 	}
-	
+
 	function beforeSave($model) {
 		$model->customValue = true;
 	}
@@ -142,5 +143,3 @@ class CustomBehavior extends ActiveRedis\Behavior {
 ```
 
 If you create your own Model class that extends ActiveRedis\Model, it's easy to trigger your own custom events via ```$this->trigger('eventName', $arguments');```.
-
-
