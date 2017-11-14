@@ -23,6 +23,7 @@ Provider::provide('default', new Database([
 	'host' => '127.0.0.1',
 	'tables' => [
 		Project::class => new Table([
+			'name' => 'projects',
 			'associations' => [
 				'roles' => new HasMany(Project::class, Role::class),
 				'owner' => new HasMany(Project::class, User::class, [
@@ -31,12 +32,14 @@ Provider::provide('default', new Database([
 			],
 		]),
 		Role::class => new Table([
+			'name' => 'roles',
 			'associations' => [
 				'project' => new BelongsTo(Role::class, Project::class),
 				'user' => new BelongsTo(Role::class, User::class),
 			],
 		]),
 		User::class => new Table([
+			'name' => 'users',
 			'behavior' => [new AutoTimestamp()],
 			'strategy' => new AdvancedStrategy(),
 			'associations' => [

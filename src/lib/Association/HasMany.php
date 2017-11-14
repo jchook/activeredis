@@ -8,17 +8,13 @@ class HasMany extends AbstractAssociation
 
 	function associate(Model $left, Model $right)
 	{
-		// $left->addAttribute($this->foreignKey, $right->primaryKeyValue());
-		// Wow this is bad, let's revisit this
+		$right->setAttribute($this->foreignKey, $left->getDbKey());
 	}
 
 	function getAssociated(Model $left)
 	{
-		// get a model
 		$rightClass = $this->rightClass;
-		if ($id = $left::table()->get($this->foreignKey)) {
-			return $rightClass::find($id);
-		}
+		return $rightClass::findBy([ $this->foreignKey => $left->getDbKey() ]);
 	}
 }
 

@@ -12,7 +12,11 @@
     "minimum-stability": "stable",
     "require": {},
     "require-dev": {
-        "psy/psysh": "^0.8.14"
+        "psy/psysh": "^0.8.14",
+        "phpunit/phpunit": "^6.4"
+    },
+    "scripts": {
+        "test": "phpunit spec"
     },
     "autoload": {
         "psr-4": {

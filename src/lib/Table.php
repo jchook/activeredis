@@ -27,6 +27,11 @@ class Table implements Configurable
 	protected $behaviors = [];
 
 	/**
+	 * @param Database
+	 */
+	protected $database;
+
+	/**
 	 * Array of Index objects
 	 * @var Index[]
 	 */
@@ -45,18 +50,6 @@ class Table implements Configurable
 	protected $name = '';
 
 	/**
-	 * Key separator
-	 * @var string
-	 */
-	protected $keySeparator = ':';
-
-	/**
-	 * Key prefix
-	 * @var string
-	 */
-	protected $keyPrefix = 'table';
-
-	/**
 	 * Configurable
 	 * @param array $config
 	 */
@@ -65,16 +58,9 @@ class Table implements Configurable
 		foreach ($config as $var => $val) {
 			$this->{$var} = $val;
 		}
-	}
 
-	public function attributesEncode(array $attributes): string
-	{
-		return json_encode($attributes);
-	}
-
-	public function attributesDecode(string $encodedAttributes): array
-	{
-		return json_decode($encodedAttributes, true);
+		// Tables must use their class
+		$this->name = get_class($this);
 	}
 
 	/**
@@ -85,10 +71,11 @@ class Table implements Configurable
 	 */
 	public function emitEvent(string $eventName, array $args): bool
 	{
+		array_unshift($args, $this);
 		foreach ($this->behaviors as $behavior) {
 			if (method_exists($behavior, $eventName)) {
 				try {
-					call_user_func_array([$behavior, $eventName], $args);
+					$behavior->handleEvent($eventName, $args);
 				} catch (PreventDefault $e) {
 					return false;
 				}
@@ -109,12 +96,28 @@ class Table implements Configurable
 	}
 
 	/**
+	 * Get all associations
+	 */
+	public function getAssociations(): array
+	{
+		return $this->associations;
+	}
+
+	/**
 	 * Get the model class of objects stored in this table
 	 * @return string
 	 */
 	public function getModelClass(): string
 	{
 		return $this->modelClass;
+	}
+
+	/**
+	 * Get the Database this Table belongs to
+	 */
+	public function getDatabase(): Database
+	{
+		return $this->database;
 	}
 
 	/**
@@ -129,9 +132,9 @@ class Table implements Configurable
 	/**
 	 * Get the key given some params
 	 */
-	public function getKey(array $params)
+	public function getKey(array $params = [])
 	{
-		return $this->keyPrefix . $this->keySeparator . $this->name . '?' . http_build_query($params);
+		return $this->getDatabase()->getKey($this->getModelClass(), $params);
 	}
 
 	/**
@@ -140,14 +143,13 @@ class Table implements Configurable
 	 */
 	public function read($primaryKey): Model
 	{
-		$this->emitEvent('beforeWrite', [$model]);
+		$this->emitEvent('beforeRead', [$primaryKey]);
 
-		// Read from the DB
-		$modelClass = $this->getModelClass();
-		$json = $this->db()->get($this->getKey($primaryKey));
-		$model = new $modelClass($this->decode($json));
+		$model = $this->getDatabase()->getModel(
+			$this->getKey($primaryKey)
+		);
 
-		$this->emitEvent('afterWrite', [$model]);
+		$this->emitEvent('afterRead', [$model]);
 
 		return $model;
 	}
@@ -161,9 +163,9 @@ class Table implements Configurable
 		$this->emitEvent('beforeWrite', [$model]);
 
 		// Write to the DB
-		$this->db()->set(
-			$this->getKey($model->getPrimaryKey()),
-			$this->encode($model->getAttributes())
+		$this->getDatabase()->getConnection()->set(
+			$model->getDbKey(),
+			$this->getDatabase()->encodeModel($model)
 		);
 
 		$this->emitEvent('afterWrite', [$model]);

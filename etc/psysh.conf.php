@@ -8,7 +8,7 @@ if (is_file($root . '/vendor/autoload.php')) {
   require_once $root . '/vendor/autoload.php';
 }
 
-// Bootstrap-ready
+// Fallback to normal autoloader
 elseif (is_file($root . '/src/autoload.php')) {
   echo "Using " . $root . "/src/autoload.php\n";
   require_once $root . '/src/autoload.php';

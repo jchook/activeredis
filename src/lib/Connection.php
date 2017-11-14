@@ -13,7 +13,7 @@ namespace ActiveRedis;
 /**
  * Redisent, a Redis interface for the modest among us
  */
-class Connection
+class Connection implements Configurable
 {
 	const CRLF = "\r\n";
 
@@ -35,8 +35,8 @@ class Connection
 	public function touch()
 	{
 		if (!$this->connection) {
-			if (false == ($this->connection = @fsockopen($this->config['host'], $this->config['port'], $errno, $errstr))) {
-				throw new Exception($errstr, $errno);
+			if (false == ($this->connection = @fsockopen($this->config['host'] ?? 'localhost', $this->config['port'] ?? 6379, $errno, $errstr))) {
+				throw new \Exception($errstr, $errno);
 			}
 			unset($this->config);
 		}
@@ -67,7 +67,7 @@ class Connection
 
 			// Error
 			case '-':
-				throw new Exception(substr(trim($reply), 4));
+				throw new \Exception(substr(trim($reply), 4));
 			break;
 
 			// In-line reply

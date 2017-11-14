@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ActiveRedis\Exception;
+namespace ActiveRedis;
 
 interface Configurable
 {

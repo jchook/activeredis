@@ -9,6 +9,8 @@ use ActiveRedis\Behavior\AbstractBehavior;
 use ActiveRedis\Exception\ClassNotFound;
 use ActiveRedis\Exception\DatabaseNotFound;
 use ActiveRedis\Exception\InvalidConfiguration;
+use ActiveRedis\Exception\InvalidModelEncoding;
+use ActiveRedis\Exception\RecordNotFound;
 use ActiveRedis\Exception\TableNotFound;
 
 /**
@@ -20,13 +22,61 @@ use ActiveRedis\Exception\TableNotFound;
  */
 class Database implements Configurable
 {
+	const CLASS_ATTRIBUTE = '__class';
+
 	protected $connection;
 	protected $config = [];
+
+	/**
+	 * Key separator
+	 * @var string
+	 */
+	protected $keySeparator = ':';
+
+	/**
+	 * Key prefix
+	 * @var string
+	 */
+	protected $keyPrefix = 'db';
+
+	/**
+	 * @var Table[]
+	 */
 	protected $tables = [];
 
 	public function __construct(array $config = [])
 	{
 		$this->config = $config;
+	}
+
+	public function decodeModel(string $data): Model
+	{
+		list($modelClass, $attr) = explode($this->keySeparator, $data);
+		$attr = json_decode($data, true);
+		$modelClass = $attr[self::CLASS_ATTRIBUTE];
+		unset($attr[self::CLASS_ATTRIBUTE]);
+		if (!$modelClass || !class_exists($modelClass)) {
+			print_r($attr);
+			throw new InvalidModelEncoding('Could not find class for encoded model data: ' . $data);
+		}
+		return new $modelClass($attr);
+	}
+
+	public function encodeModel(Model $model): string
+	{
+		return json_encode(array_merge(
+			[self::CLASS_ATTRIBUTE => get_class($model)],
+			$model->getAttributes()
+		));
+	}
+
+	public function getModel(string $dbKey): Model
+	{
+		$data = $this->getConnection()->get($dbKey);
+		if (!$data) {
+			throw new RecordNotFound('Could not find record with key: ' . $dbKey);
+		}
+		return $this->decodeModel($data);
 	}
 
 	public function getConnection(): Connection
@@ -36,6 +86,11 @@ class Database implements Configurable
 			$this->connection = $this->instantiateConfigurable(Connection::class, $config);
 		}
 		return $this->connection;
+	}
+
+	public function getKey($tableName, array $params)
+	{
+		return $this->keyPrefix . $this->keySeparator . $tableName . '?' . http_build_query($params);
 	}
 
 	/**
@@ -58,7 +113,7 @@ class Database implements Configurable
 	{
 		$className = $defaultClass;
 		if (isset($config['class'])) {
-			$className = $this->resolveClassName($config['class'], $this->config['namespaces'] ?? []);
+			$className = $this->resolveClassName($config['class'], array_merge($this->config['namespaces'] ?? [], $namespaces));
 			unset($config['class']);
 		}
 		return new $className($config);
@@ -123,7 +178,7 @@ class Database implements Configurable
 				$assocConf['name'] = $assocName;
 				$assocConf['leftClass'] = $className;
 				$config['associations'][$assocName] = $this->instantiateConfigurable(
-					BelongsTo::class, $assocConf, ['ActiveRedis\Association']
+					'', $assocConf, ['ActiveRedis\Association']
 				);
 			}
 		}

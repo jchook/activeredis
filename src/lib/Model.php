@@ -29,9 +29,10 @@ abstract class Model implements Configurable
 	protected $associated = [];
 
 	/**
-	 * @var array of [string => bool]
+	 * Holds original values of
+	 * @var array of [string => mixed]
 	 */
-	protected $isDirty = [];
+	protected $changed = [];
 
 	/**
 	 * Get the Database to which this Model's Table belongs
@@ -48,7 +49,30 @@ abstract class Model implements Configurable
 	 */
 	public static function table(): Table
 	{
-		static::db()->table(static::class);
+		return static::db()->getTable(static::class);
+	}
+
+	/**
+	 * Find objects by their attributes
+	 */
+	public static function findBy(array $params): array
+	{
+		// TODO: clean this up. It doesn't belong here.
+		$db = static::db();
+		$raw = $db->getConnection();
+		$args = [];
+		foreach ($params as $param) {
+			$args[] = $this->getKey((array)$param);
+		}
+		$inter = call_user_func_array([$raw, 'sinter'], $args);
+		if (!$inter || !is_array($inter)) {
+			return [];
+		}
+		return function() use ($inter, $table) {
+			foreach ($inter as $dbKey) {
+				yield $db->getModel($dbKey);
+			}
+		};
 	}
 
 	/**
@@ -118,11 +142,10 @@ abstract class Model implements Configurable
 			return $this->$method($val);
 		}
 
-		// Association
-		elseif ($association = $this::table()->association($var)) {
-			$this->isDirty[$var] = true;
-			return $this->associated[$var] = $val;
-		}
+		try {
+			$assoc = $this::table()->getAssociation($var);
+			return $assoc->associate($this, $var);
+		} catch (AssociationNotFound $e) {}
 
 		// Attribute
 		$this->setAttribute($var, $val);
@@ -150,7 +173,7 @@ abstract class Model implements Configurable
 	public function attr($get, $set = null)
 	{
 		if (!is_null($set)) {
-			return $this->setAttribute($get, $set);
+			$this->setAttribute($get, $set);
 		}
 		return $this->getAttribute($get);
 	}
@@ -160,9 +183,17 @@ abstract class Model implements Configurable
 	 * last save.
 	 * @return bool
 	 */
-	public function isDirty(): bool
+	public function hasChanged(): bool
 	{
-		return (bool) $this->isDirty;
+		return (bool) $this->changed;
+	}
+
+	/**
+	 * Delta represents the changes in attributes
+	 */
+	public function getChanged(): array
+	{
+		return $this->changed;
 	}
 
 	/**
@@ -170,12 +201,42 @@ abstract class Model implements Configurable
 	 * @param string $var
 	 * @return mixed null if the attribute does not exist
 	 */
-	function getAttribute(string $name)
+	public function getAttribute(string $name)
 	{
 		if (isset($this->attributes[$name])) {
 			return $this->attributes[$name];
 		}
 		trigger_error('Undefined attribute ' . $name . ' in ' . get_class($this));
+	}
+
+	/**
+	 * Get all attributes or a subset of attributes
+	 * @param array|null $keys
+	 * @return array
+	 */
+	public function getAttributes(?array $keys = null): array
+	{
+		if (is_null($keys)) {
+			return $this->attributes;
+		}
+		return array_intersect_key($this->attributes, array_flip($keys));
+	}
+
+	/**
+	 * Get the Database to which this model's Table belongs
+	 */
+	public function getDb(): Database
+	{
+		return Provider::getDatabase($this::$db);
+	}
+
+	/**
+	 * Get a unique string key against which this model can be stored in Redis
+	 * @return string
+	 */
+	public function getDbKey(): string
+	{
+		return $this::table()->getKey($this->getPrimaryKey());
 	}
 
 	/**
@@ -188,11 +249,19 @@ abstract class Model implements Configurable
 	}
 
 	/**
+	 * Get the table to which this model belongs
+	 */
+	public function getTable(): Table
+	{
+		return $this->getDb()->getTable(get_class($this));
+	}
+
+	/**
 	 * True if the attribute named exists
 	 * @param string $var name
 	 * @return bool
 	 */
-	function hasAttribute(string $name): bool
+	public function hasAttribute(string $name): bool
 	{
 		return array_key_exists($name, $this->attributes);
 	}
@@ -200,35 +269,40 @@ abstract class Model implements Configurable
 	/**
 	 * Save this model and any changes to the DB
 	 */
-	public function save()
+	public function save(): void
 	{
 		$this::table()->write($this);
+		$this->changed = [];
 	}
 
 	/**
 	 * Set a single attribute value by name
 	 * @param string $var
 	 * @param mixed $val
-	 * @param bool $makeDirty
+	 * @param bool $ignore
 	 * @return mixed $val
 	 */
-	public function setAttribute(string $name, $value, bool $makeDirty = true): void
+	public function setAttribute(string $name, $value, $asChange = true): void
 	{
-		if ($makeDirty && (!isset($this->attributes[$name]) || ($this->attributes[$name] !== $value))) {
-			$this->isDirty[$name] = true;
+		if ((($this->attributes[$name] ?? null) !== $value) || isset($this->changed[$name])) {
+			$this->attributes[$name] = $value;
+			if ($asChange) {
+				$this->changed[$name] = array_key_exists($name, $this->changed)
+					? $this->changed[$name]
+					: ($this->attributes[$name] ?? null)
+				;
+			}
 		}
-		$this->attributes[$name] = $value;
 	}
 
 	/**
 	 * Set attributes via name => $value pairs
 	 * @param array $attributes
-	 * @return null
 	 */
-	public function setAttributes($attributes, $makeDirty = true)
+	public function setAttributes($attributes, $asDelta = true): void
 	{
 		foreach ($attributes as $var => $val) {
-			$this->setAttribute($var, $val, $makeDirty);
+			$this->setAttribute($var, $val, $asDelta);
 		}
 	}
 }

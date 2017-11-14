@@ -6,6 +6,8 @@ namespace ActiveRedis;
 
 class Provider
 {
+	protected static $dbs = [];
+
 	/**
 	 * Get a database instance by name
 	 */
