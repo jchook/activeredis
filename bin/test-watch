@@ -1,7 +1,4 @@
 #!/bin/bash
-#
-# Requires entr (http://entrproject.org/)
-#
 DIR=$(dirname $(dirname "$(readlink -f "$0")"))
-CMD="$DIR/vendor/bin/phpunit $DIR/spec"
-find "$DIR/src" "$DIR/spec" -name '*.php' | entr $CMD
+CMD=${1:-"$DIR/vendor/bin/phpunit $DIR/spec"}
+find "$DIR/src" "$DIR/spec" -name '*.php' | entr $CMD | awk -f "$DIR/etc/test-colorize.awk"

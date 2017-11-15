@@ -100,7 +100,9 @@ class Database implements Configurable
 	{
 		if (!isset($this->tables[$className])) {
 			if (!$this->loadTable($className)) {
-				throw new TableNotFound('Table not found for model class: ' . $className);
+				$this->tables[$className] = new Table([
+					'database' => $this,
+				]);
 			}
 		}
 		return $this->tables[$className];
@@ -192,6 +194,9 @@ class Database implements Configurable
 				if ($behaviorConf instanceof AbstractBehavior) {
 					$config['behavior'][$index] = $behaviorConf;
 					continue;
+				}
+				if (is_string($index) && !isset($behaviorConf['class'])) {
+					$behaviorConf['class'] = ucfirst($index);
 				}
 				if (!isset($behaviorConf['class'])) {
 					throw new InvalidConfiguration('Missing explicit class for behavior on table: ' . $className);

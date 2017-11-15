@@ -7,7 +7,6 @@ namespace ActiveRedis;
  */
 class Uuid
 {
-
 	// Buffering random_bytes() speeds up generation of many uuids at once
 	const BUFFER_SIZE = 512;
 

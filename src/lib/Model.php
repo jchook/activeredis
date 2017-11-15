@@ -179,6 +179,14 @@ abstract class Model implements Configurable
 	}
 
 	/**
+	 * Emits an event to the Table
+	 */
+	public function emitEvent(string $eventName, array $args = []): void
+	{
+		$this::table()->emitEvent($eventName, $args);
+	}
+
+	/**
 	 * Returns true if the model is "dirty", meaning there are changes since the
 	 * last save.
 	 * @return bool

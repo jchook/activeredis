@@ -11,16 +11,22 @@ use ActiveRedis\Table;
 use ActiveRedis\Connection;
 
 /**
- * @covers Email
+ * @covers Database
  */
 final class DatabaseTest extends TestCase
 {
 	public function setUp()
 	{
+		$behavior = [
+			'Identify',
+			'Timestamp',
+		];
+
 		$this->db = $db = new Database([
 			'namespaces' => ['MyApp'],
 			'host' => '127.0.0.1',
 			'tables' => [
+
 				'Project' => [
 					'associations' => [
 						'owner' => [
@@ -28,20 +34,32 @@ final class DatabaseTest extends TestCase
 							'model' => 'User',
 							'foreignKey' => 'user_id', // would be owner_id by default
 						],
-						'roles' => 'HasMany User', // shorthand config
+						'roles' => 'HasMany Role', // shorthand config
+					],
+					'behavior' => $behavior + [
+						'indexes' => [
+							'attributes' => ['user_id']
+						],
 					],
 				],
+
 				'Role' => [
 					'associations' => [
 						'project' => 'BelongsTo Project',
 						'user' => 'BelongsTo User',
 					],
+					'behavior' => $behavior + [
+						'indexes' => [
+							'attributes' => ['project_id', 'user_id'],
+						],
+					],
 				],
+
 				'User' => [
-					'behavior' => ['AutoTimestamp'],
 					'associations' => [
 						'roles' => 'HasMany Role',
 					],
+					'behavior' => $behavior,
 				],
 			]
 		]);
@@ -64,6 +82,7 @@ final class DatabaseTest extends TestCase
 	public function testSetsModel()
 	{
 		$project = new Project();
+		$project->id = 'test';
 		$project->name = 'Test';
 		$project->save();
 
@@ -73,6 +92,11 @@ final class DatabaseTest extends TestCase
 		$this->assertInstanceOf(Project::class, $next);
 		$this->assertEquals($project->name, $next->name);
 	}
+
+	// public function testIndexes()
+	// {
+	//
+	// }
 }
 
 class Project extends Model {}
