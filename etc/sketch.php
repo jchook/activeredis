@@ -7,7 +7,7 @@ use ActiveRecord\Association\HasOne;
 use ActiveRecord\Association\BelongsTo;
 use ActiveRecord\Behavior\AutoTimestamp;
 use ActiveRecord\Database;
-use ActiveRecord\Provider;
+use ActiveRecord\Network;
 use ActiveRecord\Table;
 use ActiveRecord\Model;
 new ActiveRecord\StorageStrategy\AdvancedStrategy;
@@ -19,7 +19,7 @@ class Role extends Model {}
 class User extends Model {}
 
 // This is raw creation of the provided database
-Provider::provide('default', new Database([
+Network::provide('default', new Database([
 	'host' => '127.0.0.1',
 	'tables' => [
 		Project::class => new Table([
@@ -90,7 +90,7 @@ $config = [
 ];
 
 // This will set the config property of the Database
-Provider::provide('default', new Database($config));
+Network::provide('default', new Database($config));
 
 
 // IDEA: strategies -- coordinated groups of behaviors.

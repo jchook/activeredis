@@ -40,7 +40,7 @@ abstract class Model implements Configurable
 	 */
 	public static function db(): Database
 	{
-		return Provider::getDatabase(static::$db);
+		return Network::get(static::$db);
 	}
 
 	/**
@@ -235,7 +235,7 @@ abstract class Model implements Configurable
 	 */
 	public function getDb(): Database
 	{
-		return Provider::getDatabase($this::$db);
+		return Network::get($this::$db);
 	}
 
 	/**

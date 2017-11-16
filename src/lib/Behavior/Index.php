@@ -9,7 +9,7 @@ use ActiveRedis\Table;
 /**
  * Save indexes to a model so that it can be located
  */
-class Indexes extends AbstractBehavior
+class Index extends AbstractBehavior
 {
 	protected $attributes = [];
 

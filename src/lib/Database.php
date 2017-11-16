@@ -6,6 +6,7 @@ namespace ActiveRedis;
 
 use ActiveRedis\Association\AbstractAssociation;
 use ActiveRedis\Behavior\AbstractBehavior;
+use ActiveRedis\Behavior\Index;
 use ActiveRedis\Exception\ClassNotFound;
 use ActiveRedis\Exception\DatabaseNotFound;
 use ActiveRedis\Exception\InvalidConfiguration;
@@ -22,10 +23,23 @@ use ActiveRedis\Exception\TableNotFound;
  */
 class Database implements Configurable
 {
-	const CLASS_ATTRIBUTE = '__class';
+	const CLASS_ATTRIBUTE = 'TYPE';
 
-	protected $connection;
+	/**
+	 * Store the config array for dynamically loaded components like Tables
+	 * @var array
+	 */
 	protected $config = [];
+
+	/**
+	 * @var Connection
+	 */
+	protected $connection;
+
+	/**
+	 * Default table behaviors
+	 */
+	protected $defaultBehavior = ['Identify'];
 
 	/**
 	 * Key separator
@@ -44,9 +58,26 @@ class Database implements Configurable
 	 */
 	protected $tables = [];
 
+	/**
+	 * Configurable
+	 */
 	public function __construct(array $config = [])
 	{
 		$this->config = $config;
+		foreach ($config as $var => $val) {
+			switch ($var) {
+
+				// Dynamically loaded config
+				case 'connection':
+				case 'tables':
+					break;
+
+				// Static config
+				default:
+					$this->{$var} = $val;
+					break;
+			}
+		}
 	}
 
 	public function decodeModel(string $data): Model
@@ -86,6 +117,11 @@ class Database implements Configurable
 			$this->connection = $this->instantiateConfigurable(Connection::class, $config);
 		}
 		return $this->connection;
+	}
+
+	public function getKeyPrefix()
+	{
+		return $this->keyPrefix();
 	}
 
 	public function getKey($tableName, array $params)
@@ -185,26 +221,38 @@ class Database implements Configurable
 			}
 		}
 
-		// Behavior
-		if (isset($config['behaviors'])) {
-			foreach ($config['behaviors'] as $index => $behaviorConf) {
-				if (is_string($behaviorConf)) {
-					$behaviorConf = ['class' => $behaviorConf];
-				}
-				if ($behaviorConf instanceof AbstractBehavior) {
-					$config['behavior'][$index] = $behaviorConf;
-					continue;
-				}
-				if (is_string($index) && !isset($behaviorConf['class'])) {
-					$behaviorConf['class'] = ucfirst($index);
-				}
-				if (!isset($behaviorConf['class'])) {
-					throw new InvalidConfiguration('Missing explicit class for behavior on table: ' . $className);
-				}
-				$config['behavior'][$index] = $this->instantiateConfigurable(
-					'', $behaviorConf, ['ActiveRedis\Behavior']
-				);
+		// Behaviors
+		$behaviors = [];
+
+		// Default behavior
+		if (!isset($config['behaviors'])) {
+			$config['behaviors'] = $this->defaultBehaviors ?? [];
+		}
+
+		// Configured Behavior
+		foreach ($config['behaviors'] as $index => $behaviorConf) {
+			if (is_string($behaviorConf)) {
+				$behaviorConf = ['class' => $behaviorConf];
 			}
+			if ($behaviorConf instanceof AbstractBehavior) {
+				$behaviors[] = $behaviorConf;
+				continue;
+			}
+			if (is_string($index) && !isset($behaviorConf['class'])) {
+				$behaviorConf['class'] = ucfirst($index);
+			}
+			if (!isset($behaviorConf['class'])) {
+				throw new InvalidConfiguration('Missing explicit class for behavior on table: ' . $className);
+			}
+			$behaviors[] = $this->instantiateConfigurable(
+				'', $behaviorConf, ['ActiveRedis\Behavior']
+			);
+		}
+
+		// Index Behavior
+		// Very common type of behavior that should be easily added
+		if (is_array($config['indexes'] ?? null)) {
+			$behaviors[] = new Index(['attributes' => $config['indexes']]);
 		}
 
 		// Attach database

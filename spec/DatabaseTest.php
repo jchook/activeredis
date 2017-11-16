@@ -5,7 +5,7 @@ declare(strict_types=1);
 use PHPUnit\Framework\TestCase;
 use ActiveRedis\Association\AbstractAssociation;
 use ActiveRedis\Database;
-use ActiveRedis\Provider;
+use ActiveRedis\Network;
 use ActiveRedis\Model;
 use ActiveRedis\Table;
 use ActiveRedis\Connection;
@@ -28,43 +28,31 @@ final class DatabaseTest extends TestCase
 			'tables' => [
 
 				'Project' => [
+					'indexes' => ['user_id'],
 					'associations' => [
-						'owner' => [
-							'class' => 'BelongsTo',
-							'model' => 'User',
-							'foreignKey' => 'user_id', // would be owner_id by default
-						],
-						'roles' => 'HasMany Role', // shorthand config
-					],
-					'behavior' => $behavior + [
-						'indexes' => [
-							'attributes' => ['user_id']
-						],
+						'owner' => 'BelongsTo User',
+						'roles' => 'HasMany Role',
 					],
 				],
 
 				'Role' => [
+					'indexes' => ['project_id', 'user_id'],
 					'associations' => [
 						'project' => 'BelongsTo Project',
 						'user' => 'BelongsTo User',
 					],
-					'behavior' => $behavior + [
-						'indexes' => [
-							'attributes' => ['project_id', 'user_id'],
-						],
-					],
 				],
 
 				'User' => [
+					'indexes' => ['email'],
 					'associations' => [
 						'roles' => 'HasMany Role',
 					],
-					'behavior' => $behavior,
 				],
-			]
+			],
 		]);
 
-		Provider::setDatabase('default', $this->db);
+		Network::set('default', $this->db);
 	}
 
 	public function testParsesConfig()
@@ -79,24 +67,47 @@ final class DatabaseTest extends TestCase
 		}
 	}
 
+	public function testGetKey()
+	{
+		$db = $this->db;
+		$key = $db->getKey('TestTable', ['id' => 'test']);
+		$this->assertEquals($key, 'db:TestTable?id=test');
+
+		$key = $db->getKey('TestTable', ['project_id' => 'test', 'status' => 'done']);
+		$this->assertEquals($key, 'db:TestTable?project_id=test&status=done');
+	}
+
 	public function testSetsModel()
 	{
 		$project = new Project();
-		$project->id = 'test';
-		$project->name = 'Test';
+		$project->id = $id = 'test';
+		$project->name = $name = 'Test';
+
+		// Store it
 		$project->save();
 
+		// Retrieve it
 		$key = $project->getDbKey();
-
 		$next = $this->db->getModel($key);
+
 		$this->assertInstanceOf(Project::class, $next);
-		$this->assertEquals($project->name, $next->name);
+		$this->assertEquals($next->id, $id);
+		$this->assertEquals($next->name, $name);
 	}
 
-	// public function testIndexes()
-	// {
-	//
-	// }
+	public function testIndexes()
+	{
+		// TODO: this doesn't belong here but I just wanna see if indexes work
+		$user = new User();
+		$user->id = 1;
+		$user->save();
+
+		$project = new Project();
+		$project->id = 1;
+		$project->name = 'Project 1';
+		// $project->owner = $user;
+
+	}
 }
 
 class Project extends Model {}
