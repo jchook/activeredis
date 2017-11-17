@@ -7,5 +7,5 @@ BEGIN {
 	n="\n"
 }
 { print $0 }
-/(ERRORS!)/ { print n red bold invert "FAIL" reset n }
+/(ERRORS!|FAILURES!)/ { print n red bold invert "FAIL" reset n }
 /(OK)/ { print n green bold invert "PASS" reset n }

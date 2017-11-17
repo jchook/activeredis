@@ -3,7 +3,7 @@
 declare(strict_types=1);
 namespace ActiveRedis\Exception;
 
-class InvalidModelEncoding extends BaseException
+class InvalidModelEncoding extends AbstractException
 {
 
 }

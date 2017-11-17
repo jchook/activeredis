@@ -23,7 +23,7 @@ use ActiveRedis\Exception\TableNotFound;
  */
 class Database implements Configurable
 {
-	const CLASS_ATTRIBUTE = 'TYPE';
+	const CLASS_ATTRIBUTE = '__';
 
 	/**
 	 * Store the config array for dynamically loaded components like Tables
@@ -67,8 +67,15 @@ class Database implements Configurable
 		foreach ($config as $var => $val) {
 			switch ($var) {
 
-				// Dynamically loaded config
+				// Connection can be set directly IFF it's a Connection. Otherwise the
+				// config is interpreted dynamically.
 				case 'connection':
+					if ($val instanceof Connection) {
+						$this->connection = $val;
+					}
+					break;
+
+				// Tables are dynamically loaded
 				case 'tables':
 					break;
 
@@ -80,6 +87,9 @@ class Database implements Configurable
 		}
 	}
 
+	/**
+	 * Decode a model stored in the database
+	 */
 	public function decodeModel(string $data): Model
 	{
 		list($modelClass, $attr) = explode($this->keySeparator, $data);
@@ -87,12 +97,14 @@ class Database implements Configurable
 		$modelClass = $attr[self::CLASS_ATTRIBUTE];
 		unset($attr[self::CLASS_ATTRIBUTE]);
 		if (!$modelClass || !class_exists($modelClass)) {
-			print_r($attr);
 			throw new InvalidModelEncoding('Could not find class for encoded model data: ' . $data);
 		}
 		return new $modelClass($attr);
 	}
 
+	/**
+	 * Encode a model for storage in the database
+	 */
 	public function encodeModel(Model $model): string
 	{
 		return json_encode(array_merge(
@@ -101,6 +113,9 @@ class Database implements Configurable
 		));
 	}
 
+	/**
+	 * Fetch a model by DB key
+	 */
 	public function getModel(string $dbKey): Model
 	{
 		$data = $this->getConnection()->get($dbKey);
@@ -110,6 +125,9 @@ class Database implements Configurable
 		return $this->decodeModel($data);
 	}
 
+	/**
+	 * The connection is the actual connection to Redis-- the raw query mechanism
+	 */
 	public function getConnection(): Connection
 	{
 		if (!$this->connection) {
@@ -119,12 +137,18 @@ class Database implements Configurable
 		return $this->connection;
 	}
 
-	public function getKeyPrefix()
+	/**
+	 * Get the key prefix for this Database
+	 */
+	public function getKeyPrefix(): string
 	{
 		return $this->keyPrefix();
 	}
 
-	public function getKey($tableName, array $params)
+	/**
+	 * Get the key for a table and a set of attributes
+	 */
+	public function getKey($tableName, array $params): string
 	{
 		return $this->keyPrefix . $this->keySeparator . $tableName . '?' . http_build_query($params);
 	}
@@ -138,6 +162,7 @@ class Database implements Configurable
 			if (!$this->loadTable($className)) {
 				$this->tables[$className] = new Table([
 					'database' => $this,
+					'modelClass' => $className,
 				]);
 			}
 		}
@@ -158,24 +183,6 @@ class Database implements Configurable
 	}
 
 	/**
-	 * Resolve a relative class name
-	 */
-	protected function resolveClassName(string $rawInput, array $namespaces = []): string
-	{
-		$className = '\\' . ltrim($rawInput, '\\');
-		if (class_exists($className)) {
-			return $className;
-		}
-		foreach ($namespaces as $namespace) {
-			$otherClassName = $namespace . $className;
-			if (class_exists($otherClassName)) {
-				return $otherClassName;
-			}
-		}
-		throw new ClassNotFound('Could not resolve class: ' . $rawInput);
-	}
-
-	/**
 	 * Dynamically load a table from config
 	 */
 	protected function loadTable(string $className): bool
@@ -190,11 +197,6 @@ class Database implements Configurable
 		// Make sure config is an array
 		if (!is_array($config)) {
 			throw new InvalidConfiguration('Table configuration must be a string or a Table for: ' . $className);
-		}
-
-		// Make sure this table has a model class
-		if (!isset($config['modelClass'])) {
-			$config['modelClass'] = $className;
 		}
 
 		// Associations
@@ -255,11 +257,48 @@ class Database implements Configurable
 			$behaviors[] = new Index(['attributes' => $config['indexes']]);
 		}
 
+		// Attach behaviors
+		$config['behaviors'] = $behaviors;
+
 		// Attach database
 		$config['database'] = $this;
+
+		// Make sure this table has the correct classname
+		$config['modelClass'] = $className;
 
 		// Create table
 		$this->tables[$className] = $this->instantiateConfigurable(Table::class, $config);
 		return true;
+	}
+
+	/**
+	 * Resolve a relative class name
+	 */
+	protected function resolveClassName(string $rawInput, array $namespaces = []): string
+	{
+		$className = '\\' . ltrim($rawInput, '\\');
+		if (class_exists($className)) {
+			return $className;
+		}
+		foreach ($namespaces as $namespace) {
+			$otherClassName = $namespace . $className;
+			if (class_exists($otherClassName)) {
+				return $otherClassName;
+			}
+		}
+		throw new ClassNotFound('Could not resolve class: ' . $rawInput);
+	}
+
+	/**
+	 * Set a model in the database. Note that you should not use this directly.
+	 * @see Model::save()
+	 */
+	public function setModel(Model $model): void
+	{
+		$table = $this->getTable(get_class($model));
+		$this->getConnection()->set(
+			$this->getKey($table->getName(), $model->getPrimaryKey()),
+			$this->encodeModel($model)
+		);
 	}
 }

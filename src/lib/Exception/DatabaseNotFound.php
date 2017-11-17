@@ -3,7 +3,7 @@
 declare(strict_types=1);
 namespace ActiveRedis\Exception;
 
-class DatabaseNotFound extends BaseException
+class DatabaseNotFound extends AbstractException
 {
 	
 }

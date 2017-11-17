@@ -49,7 +49,7 @@ abstract class Model implements Configurable
 	 */
 	public static function table(): Table
 	{
-		return static::db()->getTable(static::class);
+		return static::db()->getTable(get_called_class());
 	}
 
 	/**
@@ -83,11 +83,11 @@ abstract class Model implements Configurable
 	 */
 	function __construct(array $config = [])
 	{
-		$this::table()->emitEvent('beforeConstruct', [$this]);
+		$this->emitEvent('beforeConstruct', [$this]);
 		foreach ($config as $var => $val) {
 			$this->{$var} = $val;
 		}
-		$this::table()->emitEvent('afterConstruct', [$this]);
+		$this->emitEvent('afterConstruct', [$this]);
 	}
 
 	/**
@@ -164,21 +164,6 @@ abstract class Model implements Configurable
 	}
 
 	/**
-	 * Gets or sets an attribute by name
-	 *
-	 * @param string $get
-	 * @param mixed $set optional
-	 * @return mixed
-	 */
-	public function attr($get, $set = null)
-	{
-		if (!is_null($set)) {
-			$this->setAttribute($get, $set);
-		}
-		return $this->getAttribute($get);
-	}
-
-	/**
 	 * Emits an event to the Table
 	 */
 	public function emitEvent(string $eventName, array $args = []): void
@@ -211,7 +196,7 @@ abstract class Model implements Configurable
 	 */
 	public function getAttribute(string $name)
 	{
-		if (isset($this->attributes[$name])) {
+		if (array_key_exists($name, $this->attributes)) {
 			return $this->attributes[$name];
 		}
 		trigger_error('Undefined attribute ' . $name . ' in ' . get_class($this));
@@ -279,38 +264,44 @@ abstract class Model implements Configurable
 	 */
 	public function save(): void
 	{
-		$this::table()->write($this);
-		$this->changed = [];
+		$willSave = $this->hasChanged();
+		$this->emitEvent('beforeSave', [$this, $willSave]);
+		if ($willSave) {
+			$this::db()->setModel($this);
+			$this->changed = [];
+		}
+		$this->emitEvent('afterSave', [$this, $willSave]);
 	}
 
 	/**
 	 * Set a single attribute value by name
 	 * @param string $var
 	 * @param mixed $val
-	 * @param bool $ignore
+	 * @param bool $changed
 	 * @return mixed $val
 	 */
-	public function setAttribute(string $name, $value, $asChange = true): void
+	public function setAttribute(string $name, $value, $changed = true): void
 	{
 		if ((($this->attributes[$name] ?? null) !== $value) || isset($this->changed[$name])) {
-			$this->attributes[$name] = $value;
-			if ($asChange) {
+			if ($changed) {
 				$this->changed[$name] = array_key_exists($name, $this->changed)
 					? $this->changed[$name]
 					: ($this->attributes[$name] ?? null)
 				;
 			}
+			$this->attributes[$name] = $value;
 		}
 	}
 
 	/**
 	 * Set attributes via name => $value pairs
 	 * @param array $attributes
+	 * @param bool $changed
 	 */
-	public function setAttributes($attributes, $asDelta = true): void
+	public function setAttributes($attributes, $changed = true): void
 	{
 		foreach ($attributes as $var => $val) {
-			$this->setAttribute($var, $val, $asDelta);
+			$this->setAttribute($var, $val, $changed);
 		}
 	}
 }

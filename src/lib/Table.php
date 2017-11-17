@@ -59,15 +59,23 @@ class Table implements Configurable
 			$this->{$var} = $val;
 		}
 
-		// Tables must use their class
-		$this->name = get_class($this);
+		// This is a required variable
+		if (!$this->modelClass) {
+			throw new \Exception('Invalid model class: ' . $this->modelClass);
+		}
+
+		// By default name the table after the class of things it holds
+		// This can be shortened to save on storage space or key length
+		if (!$this->name) {
+			$this->name = $this->modelClass;
+		}
 	}
 
 	/**
 	 * Emit an event
 	 * @param string $eventName
 	 * @param array $args
-	 * @return bool whether default was prevented
+	 * @return bool returns false if default is prevented
 	 */
 	public function emitEvent(string $eventName, array $args): bool
 	{
@@ -117,6 +125,8 @@ class Table implements Configurable
 	 */
 	public function getDatabase(): Database
 	{
+		// $modelClass = $this->getModelClass();
+		// return $modelClass::db();
 		return $this->database;
 	}
 
@@ -134,41 +144,7 @@ class Table implements Configurable
 	 */
 	public function getKey(array $params = [])
 	{
-		return $this->getDatabase()->getKey($this->getModelClass(), $params);
-	}
-
-	/**
-	 * Read a model or models from the database
-	 * @param Model $model
-	 */
-	public function read($primaryKey): Model
-	{
-		$this->emitEvent('beforeRead', [$primaryKey]);
-
-		$model = $this->getDatabase()->getModel(
-			$this->getKey($primaryKey)
-		);
-
-		$this->emitEvent('afterRead', [$model]);
-
-		return $model;
-	}
-
-	/**
-	 * Write the model to the database.
-	 * @param Model $model
-	 */
-	public function write(Model $model): void
-	{
-		$this->emitEvent('beforeWrite', [$model]);
-
-		// Write to the DB
-		$this->getDatabase()->getConnection()->set(
-			$model->getDbKey(),
-			$this->getDatabase()->encodeModel($model)
-		);
-
-		$this->emitEvent('afterWrite', [$model]);
+		return $this->getDatabase()->getKey($this->getName(), $params);
 	}
 
 }

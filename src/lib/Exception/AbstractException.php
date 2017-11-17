@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace ActiveRedis\Exception;
 
-class BaseException extends \Exception
+abstract class AbstractException extends \Exception
 {
 
 }

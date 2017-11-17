@@ -14,6 +14,8 @@ class Network
 	public static function get(string $name): Database
 	{
 		if (!isset(self::$dbs[$name])) {
+			// Not sure if I should throw here
+			// self::$dbs[$name] = new Database();
 			throw new DatabaseNotFound('Database not found: ' . $name);
 		}
 		return self::$dbs[$name];

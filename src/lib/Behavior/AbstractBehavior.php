@@ -19,9 +19,12 @@ abstract class AbstractBehavior implements Configurable
 		}
 	}
 
+	/**
+	 * All events pass through this method
+	 */
 	public function handleEvent($eventName, $args): void
 	{
-		call_user_func_array($eventName, $args);
+		call_user_func_array([$this, $eventName], $args);
 	}
 
 	/**

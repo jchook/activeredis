@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace ActiveRedis\Exception;
 
-class RecordNotFound extends BaseException
+class RecordNotFound extends AbstractException
 {
 
 }

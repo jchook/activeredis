@@ -16,7 +16,7 @@ class Index extends AbstractBehavior
 	public function beforeWrite(Table $table, Model $model): void
 	{
 		// Database
-		$db = $table->getDb();
+		$db = $model::db()->getConnection();
 
 		// Get the model's DB key
 		$modelKey = $model->getDbKey();
