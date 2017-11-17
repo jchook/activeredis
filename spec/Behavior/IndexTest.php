@@ -29,7 +29,6 @@ final class IndexTest extends TestCase
 		]);
 
 		$table = $model::table();
-
 		$dbKey = $model->getDbKey();
 
 		// First make sure our assumptions are correct about IDs
@@ -43,6 +42,9 @@ final class IndexTest extends TestCase
 
 		// New key
 		$newNameKey = $table->getKey($model->getAttributes(['name']));
+
+		// They should be different
+		$this->assertTrue($oldNameKey !== $newNameKey);
 
 		// Index the change
 		$index->handleEvent('beforeWrite', [$table, $model]);
