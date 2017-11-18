@@ -32,7 +32,7 @@ final class IndexTest extends TestCase
 		$dbKey = $model->getDbKey();
 
 		// First make sure our assumptions are correct about IDs
-		$this->assertEquals($table->getKey($model->getPrimaryKey()), 'db:mocks?id=1');
+		$this->assertEquals('db:mocks?id=1', $table->getKey($model->getPrimaryKey()));
 
 		// Old key
 		$oldNameKey = $table->getKey($model->getAttributes(['name']));

@@ -49,7 +49,7 @@ abstract class Model implements Configurable
 	 */
 	public static function table(): Table
 	{
-		return static::db()->getTable(get_called_class());
+		return static::db()->getSchema()->getTable(get_called_class());
 	}
 
 	/**
@@ -59,18 +59,18 @@ abstract class Model implements Configurable
 	{
 		// TODO: clean this up. It doesn't belong here.
 		$db = static::db();
-		$raw = $db->getConnection();
+		$table = static::table();
 		$args = [];
 		foreach ($params as $param) {
-			$args[] = $this->getKey((array)$param);
+			$args[] = $table->getKey((array)$param);
 		}
-		$inter = call_user_func_array([$raw, 'sinter'], $args);
+		$inter = $db->query('sinter', $args);
 		if (!$inter || !is_array($inter)) {
 			return [];
 		}
 		return function() use ($inter, $table) {
 			foreach ($inter as $dbKey) {
-				yield $db->getModel($dbKey);
+				yield $table->getModel($dbKey);
 			}
 		};
 	}
@@ -216,14 +216,6 @@ abstract class Model implements Configurable
 	}
 
 	/**
-	 * Get the Database to which this model's Table belongs
-	 */
-	public function getDb(): Database
-	{
-		return Network::get($this::$db);
-	}
-
-	/**
 	 * Get a unique string key against which this model can be stored in Redis
 	 * @return string
 	 */
@@ -246,7 +238,7 @@ abstract class Model implements Configurable
 	 */
 	public function getTable(): Table
 	{
-		return $this->getDb()->getTable(get_class($this));
+		return $this::table();
 	}
 
 	/**
@@ -267,7 +259,7 @@ abstract class Model implements Configurable
 		$willSave = $this->hasChanged();
 		$this->emitEvent('beforeSave', [$this, $willSave]);
 		if ($willSave) {
-			$this::db()->setModel($this);
+			$this::table()->saveModel($this);
 			$this->changed = [];
 		}
 		$this->emitEvent('afterSave', [$this, $willSave]);

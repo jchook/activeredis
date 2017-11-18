@@ -20,12 +20,12 @@ spl_autoload_register(function($className) {
 // Mock database
 ActiveRedis\Network::set('mock', new ActiveRedisSpec\Support\MockDatabase([
 	'connection' => new ActiveRedisSpec\Support\MockConnection(),
-	'tables' => [
-		ActiveRedisSpec\Support\MockModel::class => [
-			'name' => 'mocks',
-			'class' => ActiveRedisSpec\Support\MockTable::class,
+	'schema' => [
+		'tables' => [
+			ActiveRedisSpec\Support\MockModel::class => [
+				'name' => 'mocks',
+				'class' => ActiveRedisSpec\Support\MockTable::class,
+			],
 		],
 	],
 ]));
-
-$table = ActiveRedis\Network::get('mock')->getTable(ActiveRedisSpec\Support\MockModel::class);

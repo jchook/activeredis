@@ -13,10 +13,9 @@ class BelongsTo extends AbstractAssociation
 	function getAssociated(Model $left)
 	{
 		$rightClass = $this->rightClass;
+		$table = $rightClass::table();
 		try {
-			return $rightClass::db()->getModel(
-				$left->getAttribute($this->foreignKey)
-			);
+			return $table->getModel($this->foreignKey);
 		} catch (ModelNotFound $e) {}
 	}
 }

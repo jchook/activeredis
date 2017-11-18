@@ -23,30 +23,31 @@ final class DatabaseTest extends TestCase
 		];
 
 		$this->db = $db = new Database([
-			'namespaces' => ['MyApp'],
-			'host' => '127.0.0.1',
-			'tables' => [
+			'schema' => [
+				'namespaces' => ['MyApp'],
+				'tables' => [
 
-				'Project' => [
-					'indexes' => ['user_id'],
-					'associations' => [
-						'owner' => 'BelongsTo User',
-						'roles' => 'HasMany Role',
+					'Project' => [
+						'indexes' => ['user_id'],
+						'associations' => [
+							'owner' => 'BelongsTo User',
+							'roles' => 'HasMany Role',
+						],
 					],
-				],
 
-				'Role' => [
-					'indexes' => ['project_id', 'user_id'],
-					'associations' => [
-						'project' => 'BelongsTo Project',
-						'user' => 'BelongsTo User',
+					'Role' => [
+						'indexes' => ['project_id', 'user_id'],
+						'associations' => [
+							'project' => 'BelongsTo Project',
+							'user' => 'BelongsTo User',
+						],
 					],
-				],
 
-				'User' => [
-					'indexes' => ['email'],
-					'associations' => [
-						'roles' => 'HasMany Role',
+					'User' => [
+						'indexes' => ['email'],
+						'associations' => [
+							'roles' => 'HasMany Role',
+						],
 					],
 				],
 			],
@@ -58,7 +59,7 @@ final class DatabaseTest extends TestCase
 	public function testParsesConfig()
 	{
 		$db = $this->db;
-		$projects = $db->getTable(Project::class);
+		$projects = $db->getSchema()->getTable(Project::class);
 		$this->assertInstanceOf(Table::class, $projects);
 
 		$assocs = $projects->getAssociations();
@@ -70,11 +71,11 @@ final class DatabaseTest extends TestCase
 	public function testGetKey()
 	{
 		$db = $this->db;
-		$key = $db->getKey('TestTable', ['id' => 'test']);
-		$this->assertEquals($key, 'db:TestTable?id=test');
+		$key = $db->getSchema()->getTable(Project::class)->getKey(['id' => 'test']);
+		$this->assertEquals($key, 'db:Project?id=test');
 
-		$key = $db->getKey('TestTable', ['project_id' => 'test', 'status' => 'done']);
-		$this->assertEquals($key, 'db:TestTable?project_id=test&status=done');
+		$key = $db->getSchema()->getTable(Project::class)->getKey(['owner_id' => 'test', 'status' => 'done']);
+		$this->assertEquals($key, 'db:Project?owner_id=test&status=done');
 	}
 
 	public function testSetsModel()
@@ -87,27 +88,26 @@ final class DatabaseTest extends TestCase
 		$project->save();
 
 		// Retrieve it
-		$key = $project->getDbKey();
-		$next = $this->db->getModel($key);
+		$next = $project::table()->getModel($project->getDbKey());
 
 		$this->assertInstanceOf(Project::class, $next);
 		$this->assertEquals($next->id, $id);
 		$this->assertEquals($next->name, $name);
 	}
 
-	public function testIndexes()
-	{
-		// TODO: this doesn't belong here but I just wanna see if indexes work
-		$user = new User();
-		$user->id = 1;
-		$user->save();
-
-		$project = new Project();
-		$project->id = 1;
-		$project->name = 'Project 1';
-		// $project->owner = $user;
-
-	}
+	// public function testIndexes()
+	// {
+	// 	// TODO: this doesn't belong here but I just wanna see if indexes work
+	// 	$user = new User();
+	// 	$user->id = 1;
+	// 	$user->save();
+	//
+	// 	$project = new Project();
+	// 	$project->id = 1;
+	// 	$project->name = 'Project 1';
+	// 	// $project->owner = $user;
+	//
+	// }
 }
 
 class Project extends Model {}

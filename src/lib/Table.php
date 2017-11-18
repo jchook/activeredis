@@ -72,6 +72,18 @@ class Table implements Configurable
 	}
 
 	/**
+	 * Decode a model stored in the database
+	 */
+	public function decodeModel(string $data): Model
+	{
+		$attr = json_decode($data, true);
+		$modelClass = $this->getModelClass();
+		return new $modelClass([
+			'attributes' => $attr
+		]);
+	}
+
+	/**
 	 * Emit an event
 	 * @param string $eventName
 	 * @param array $args
@@ -90,6 +102,14 @@ class Table implements Configurable
 			}
 		}
 		return true;
+	}
+
+	/**
+	 * Encode a model for storage in the database
+	 */
+	public function encodeModel(Model $model): string
+	{
+		return json_encode($model->getAttributes());
 	}
 
 	/**
@@ -112,6 +132,26 @@ class Table implements Configurable
 	}
 
 	/**
+	 * Get the Database this Table belongs to
+	 */
+	public function getDatabase(): Database
+	{
+		if (!$this->database) {
+			$modelClass = $this->getModelClass();
+			$this->database = $modelClass::db();
+		}
+		return $this->database;
+	}
+
+	/**
+	 * Get the key given some params
+	 */
+	public function getKey(array $params = [])
+	{
+		return $this->getDatabase()->getKeyPrefix() . $this->getName() . '?' . http_build_query($params);
+	}
+
+	/**
 	 * Get the model class of objects stored in this table
 	 * @return string
 	 */
@@ -121,13 +161,15 @@ class Table implements Configurable
 	}
 
 	/**
-	 * Get the Database this Table belongs to
+	 * Fetch a model by DB key
 	 */
-	public function getDatabase(): Database
+	public function getModel(string $dbKey): Model
 	{
-		// $modelClass = $this->getModelClass();
-		// return $modelClass::db();
-		return $this->database;
+		$data = $this->getDatabase()->get($dbKey);
+		if (!$data) {
+			throw new RecordNotFound('Could not find record with key: ' . $dbKey);
+		}
+		return $this->decodeModel($data);
 	}
 
 	/**
@@ -140,18 +182,15 @@ class Table implements Configurable
 	}
 
 	/**
-	 * Get the key given some params
+	 * Save a model to the database.
+	 * @see Model::save()
 	 */
-	public function getKey(array $params = [])
+	public function saveModel(Model $model): void
 	{
-		return $this->getDatabase()->getKey($this->getName(), $params);
+		$this->getDatabase()->set(
+			$this->getKey($model->getPrimaryKey()),
+			$this->encodeModel($model)
+		);
 	}
 
 }
-
-
-
-
-
-
-

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
 use ActiveRedis\Model;
+use ActiveRedisSpec\Support\MockModel;
 
 /**
  * @covers Database
@@ -12,9 +13,7 @@ final class ModelTest extends TestCase
 {
 	public function testInstantiatesWithoutExceptions()
 	{
-		$a = new A();
-		$this->assertInstanceOf(A::class, $a);
+		$a = new MockModel();
+		$this->assertInstanceOf(MockModel::class, $a);
 	}
 }
-
-class A extends Model {}

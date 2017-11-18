@@ -33,6 +33,6 @@ abstract class AbstractBehavior implements Configurable
 	 */
 	protected function getModelKey(Model $model): string
 	{
-		return $model->getTable()->getKey($model->getPrimaryKey());
+		return $model::table()->getKey($model->getPrimaryKey());
 	}
 }
