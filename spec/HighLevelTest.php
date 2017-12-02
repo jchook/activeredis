@@ -8,12 +8,17 @@ use ActiveRedis\Database;
 use ActiveRedis\Network;
 use ActiveRedis\Model;
 use ActiveRedis\Table;
-use ActiveRedis\Connection;
+use ActiveRedisSpec\Support\MockConnection;
+
+// Models for this test
+class Project extends Model {}
+class Role extends Model {}
+class User extends Model {}
 
 /**
  * @covers Database
  */
-final class DatabaseTest extends TestCase
+final class HighLevelTest extends TestCase
 {
 	public function setUp()
 	{
@@ -23,6 +28,7 @@ final class DatabaseTest extends TestCase
 		];
 
 		$this->db = $db = new Database([
+			// 'connection' => new MockConnection(),
 			'schema' => [
 				'namespaces' => ['MyApp'],
 				'tables' => [
@@ -54,15 +60,18 @@ final class DatabaseTest extends TestCase
 		]);
 
 		Network::set('default', $this->db);
+
+		// Clear the entire DB
+		$db->flushdb();
 	}
 
 	public function testParsesConfig()
 	{
 		$db = $this->db;
-		$projects = $db->getSchema()->getTable(Project::class);
-		$this->assertInstanceOf(Table::class, $projects);
+		$projectTable = $db->getSchema()->getTable(Project::class);
+		$this->assertInstanceOf(Table::class, $projectTable);
 
-		$assocs = $projects->getAssociations();
+		$assocs = $projectTable->getAssociations();
 		foreach ($assocs as $assoc) {
 			$this->assertInstanceOf(AbstractAssociation::class, $assoc);
 		}
@@ -95,23 +104,20 @@ final class DatabaseTest extends TestCase
 		$this->assertEquals($next->name, $name);
 	}
 
-	// public function testIndexes()
-	// {
-	// 	// TODO: this doesn't belong here but I just wanna see if indexes work
-	// 	$user = new User();
-	// 	$user->id = 1;
-	// 	$user->save();
-	//
-	// 	$project = new Project();
-	// 	$project->id = 1;
-	// 	$project->name = 'Project 1';
-	// 	// $project->owner = $user;
-	//
-	// }
+	public function testIndexes()
+	{
+		$user = new User();
+		$user->id = 1;
+
+		$project = new Project();
+		$project->id = 1;
+		$project->name = 'Project 1';
+		$project->owner = $user;
+		$project->save();
+		$user->save();
+
+		$projects = Project::findAllBy(['owner_id' => $user->id]);
+		// $nextProject = next($projects);
+		// $this->assertEquals($nextProject->id, $project->id);
+	}
 }
-
-class Project extends Model {}
-
-class Role extends Model {}
-
-class User extends Model {}

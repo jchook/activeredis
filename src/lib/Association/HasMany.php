@@ -1,6 +1,7 @@
 <?php
 
 namespace ActiveRedis\Association;
+use ActiveRedis\Model;
 
 class HasMany extends AbstractAssociation
 {
@@ -17,4 +18,3 @@ class HasMany extends AbstractAssociation
 		return $rightClass::findBy([ $this->foreignKey => $left->getDbKey() ]);
 	}
 }
-

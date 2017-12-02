@@ -14,7 +14,7 @@ abstract class Model implements Configurable
 	protected static $db = 'default';
 
 	/**
-	 * @var array
+	 * @var array of strings
 	 */
 	protected static $primaryKey = ['id'];
 
@@ -55,7 +55,7 @@ abstract class Model implements Configurable
 	/**
 	 * Find objects by their attributes
 	 */
-	public static function findBy(array $params): array
+	public static function findAllBy(array $params): array
 	{
 		// TODO: clean this up. It doesn't belong here.
 		$db = static::db();
@@ -108,16 +108,16 @@ abstract class Model implements Configurable
 
 		// Association
 		try {
-			if (!isset($this->associated[$var])) {
+			if (!array_key_exists($var, $this->associated)) {
 				$association = $this::table()->getAssociation($var);
 				$this->associated[$var] = $association->getAssociated($this);
-				return $this->associated[$var];
 			}
+			return $this->associated[$var];
 		} catch (AssociationNotFound $e) {}
 
 		// Notice
 		trigger_error(
-			'Undefined property: ' . get_class($this), '->' . $var .
+			'Undefined property: ' . get_class($this), '::$' . $var .
 			' on line ' . __LINE__ . ' in file ' . __FILE__,
 			E_USER_NOTICE
 		);
@@ -144,7 +144,7 @@ abstract class Model implements Configurable
 
 		try {
 			$assoc = $this::table()->getAssociation($var);
-			return $assoc->associate($this, $var);
+			return $assoc->associate($this, $val);
 		} catch (AssociationNotFound $e) {}
 
 		// Attribute

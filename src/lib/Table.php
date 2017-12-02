@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ActiveRedis;
 
+use ActiveRedis\Association\AbstractAssociation;
 use ActiveRedis\Exception\AssociationNotFound;
 use ActiveRedis\Exception\PreventDefault;
 
@@ -74,7 +75,7 @@ class Table implements Configurable
 	/**
 	 * Decode a model stored in the database
 	 */
-	public function decodeModel(string $data): Model
+	protected function decodeModel(string $data): Model
 	{
 		$attr = json_decode($data, true);
 		$modelClass = $this->getModelClass();
@@ -107,7 +108,7 @@ class Table implements Configurable
 	/**
 	 * Encode a model for storage in the database
 	 */
-	public function encodeModel(Model $model): string
+	protected function encodeModel(Model $model): string
 	{
 		return json_encode($model->getAttributes());
 	}
@@ -179,6 +180,16 @@ class Table implements Configurable
 	public function getName(): string
 	{
 		return $this->name;
+	}
+
+	/**
+	 * Whether the table has the named association.
+	 * @param string $name
+	 * @return bool
+	 */
+	public function hasAssociation(string $name): bool
+	{
+		return isset($this->associations[$name]);
 	}
 
 	/**

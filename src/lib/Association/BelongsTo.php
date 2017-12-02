@@ -2,6 +2,7 @@
 
 namespace ActiveRedis\Association;
 use ActiveRedis\Exception\ModelNotFound;
+use ActiveRedis\Model;
 
 class BelongsTo extends AbstractAssociation
 {

@@ -1,6 +1,7 @@
 <?php
 
 namespace ActiveRedis\Association;
+use ActiveRedis\Model;
 
 class HasOne extends AbstractAssociation
 {

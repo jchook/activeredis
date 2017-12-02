@@ -3,6 +3,7 @@
 namespace ActiveRedis\Association;
 use ActiveRedis\Configurable;
 use ActiveRedis\Inflector;
+use ActiveRedis\Model;
 
 /**
  * Association
