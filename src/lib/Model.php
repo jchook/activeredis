@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ActiveRedis;
 
 use ActiveRedis\Exception\AssociationNotFound;
+use ActiveRedis\Table\TableInterface;
 
 abstract class Model implements Configurable
 {
@@ -36,6 +37,7 @@ abstract class Model implements Configurable
 
 	/**
 	 * Get the Database to which this Model's Table belongs
+	 * TODO: rename to getDatabase()?
 	 * @return Database
 	 */
 	public static function db(): Database
@@ -45,11 +47,20 @@ abstract class Model implements Configurable
 
 	/**
 	 * Get the Table to which this Model belongs
+	 * TODO: rename to getTable()?
 	 * @return Table
 	 */
-	public static function table(): Table
+	public static function table(): TableInterface
 	{
 		return static::db()->getSchema()->getTable(get_called_class());
+	}
+
+	/**
+	 * Get the attributes that comprise the primary key
+	 */
+	public static function getPrimaryKeyNames()
+	{
+		return static::$primaryKey;
 	}
 
 	/**
@@ -218,6 +229,7 @@ abstract class Model implements Configurable
 	/**
 	 * Get a unique string key against which this model can be stored in Redis
 	 * @return string
+	 * @deprecated
 	 */
 	public function getDbKey(): string
 	{
@@ -227,6 +239,7 @@ abstract class Model implements Configurable
 	/**
 	 * Get the key => val of this model's primary key
 	 * @return array
+	 * @deprecated
 	 */
 	public function getPrimaryKey(): array
 	{
@@ -236,7 +249,7 @@ abstract class Model implements Configurable
 	/**
 	 * Get the table to which this model belongs
 	 */
-	public function getTable(): Table
+	public function getTable(): TableInterface
 	{
 		return $this::table();
 	}

@@ -2,18 +2,25 @@
 
 declare(strict_types=1);
 
-namespace ActiveRedis;
+namespace ActiveRedis\Table;
 
 use ActiveRedis\Association\AbstractAssociation;
+use ActiveRedis\Configurable;
+use ActiveRedis\Database;
 use ActiveRedis\Exception\AssociationNotFound;
 use ActiveRedis\Exception\PreventDefault;
+use ActiveRedis\Exception\QueryNotSupported;
+use ActiveRedis\Exception\RecordNotFound;
+use ActiveRedis\Model;
+use ActiveRedis\Query;
+use ActiveRedis\QueryResult;
 
 /**
  *
  * Table
  *
  */
-class Table implements Configurable
+class KeyTable implements TableInterface, Configurable
 {
 	/**
 	 * Array of association objects
@@ -51,6 +58,11 @@ class Table implements Configurable
 	protected $name = '';
 
 	/**
+	 * @var array
+	 */
+	protected $primaryKey = ['id'];
+
+	/**
 	 * Configurable
 	 * @param array $config
 	 */
@@ -73,7 +85,16 @@ class Table implements Configurable
 	}
 
 	/**
+	 * Decode data stored in the database
+	 */
+	protected function decodeData(string $data): array
+	{
+		return json_decode($data, true);
+	}
+
+	/**
 	 * Decode a model stored in the database
+	 * @deprecated
 	 */
 	protected function decodeModel(string $data): Model
 	{
@@ -106,7 +127,16 @@ class Table implements Configurable
 	}
 
 	/**
+	 * Encode arbitrary data for storage in the database
+	 */
+	protected function encodeData(array $data): string
+	{
+		return json_encode($data);
+	}
+
+	/**
 	 * Encode a model for storage in the database
+	 * @deprecated
 	 */
 	protected function encodeModel(Model $model): string
 	{
@@ -163,6 +193,7 @@ class Table implements Configurable
 
 	/**
 	 * Fetch a model by DB key
+	 * @deprecated in favor of runQuery()
 	 */
 	public function getModel(string $dbKey): Model
 	{
@@ -183,6 +214,14 @@ class Table implements Configurable
 	}
 
 	/**
+	 * Returns an array of primary key attribute names
+	 */
+	public function getPrimaryKey(): array
+	{
+		return $this->primaryKey;
+	}
+
+	/**
 	 * Whether the table has the named association.
 	 * @param string $name
 	 * @return bool
@@ -193,8 +232,58 @@ class Table implements Configurable
 	}
 
 	/**
+	 * Run a query against the table
+	 * @param Query $query
+	 * @return QueryResult
+	 */
+	public function runQuery(Query $query): QueryResult
+	{
+		// Conditions
+		$where = $query->getWhere();
+		if (!$where) {
+			throw new QueryNotSupported('Operations without a where clause is not yet supported on ' . get_class($this));
+		}
+
+		// Redis key
+		$key = $this->getKey($where);
+
+		// Determine whether this is a primary key or not
+		$isPrimaryKey = ! array_diff_key(
+			array_flip($this->getPrimaryKey()),
+			$where
+		);
+
+		// Select
+		if ($query->isSelect()) {
+			if ($isPrimaryKey) {
+				$data = $this->getDatabase()->get($key);
+				$attr = $this->decodeData($data);
+				$modelClass = $this->getModelClass();
+				return new QueryResult([
+					'iterator' => new ArrayIterator([
+						new $modelClass([
+							'attributes' => $attr,
+						]),
+					]),
+				]);
+			} else {
+				// TODO
+			}
+		}
+
+		// Insert or Update
+		if ($query->isInsert() || $query->isUpdate()) {
+			// TODO: do we get the whole model here? just some attributes?
+			// TODO: do we change encodeModel and decodeModel to encodeData and decodeData?
+		}
+
+		// TODO: Delete
+	}
+
+	/**
 	 * Save a model to the database.
 	 * @see Model::save()
+	 * @deprecated in favor of runQuery()
 	 */
 	public function saveModel(Model $model): void
 	{

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace ActiveRedis\Behavior;
 use ActiveRedis\Model;
-use ActiveRedis\Table;
+use ActiveRedis\Table\TableInterface;
 
 /**
  * Automatically assign a globally unique ID to a model when it's created.
@@ -29,7 +29,7 @@ class Identify extends AbstractBehavior
 	/**
 	 * As soon as the model is created, make sure it has an ID
 	 */
-	public function afterConstruct(Table $table, Model $model): void
+	public function afterConstruct(TableInterface $table, Model $model): void
 	{
 		if (!$model->hasAttribute($this->attribute)) {
 			$model->setAttribute(

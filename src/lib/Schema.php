@@ -6,12 +6,17 @@ namespace ActiveRedis;
 
 use ActiveRedis\Exception\InvalidConfiguration;
 use ActiveRedis\Exception\TableNotFound;
+use ActiveRedis\Table\TableInterface;
 
 /**
  * Database "schema"
  */
 class Schema implements Configurable
 {
+	protected const DEFAULT_ASSOCIATION_NAMESPACE = 'ActiveRedis\Association';
+	protected const DEFAULT_BEHAVIOR_NAMESPACE = 'ActiveRedis\Behavior';
+	protected const DEFAULT_TABLE_CLASS = 'ActiveRedis\Table\KeyTable';
+
 	/**
 	 * array of [$modelClass => $tableInstance]
 	 */
@@ -43,7 +48,7 @@ class Schema implements Configurable
 	/**
 	 * Get a table by model class
 	 */
-	public function getTable(string $modelClass): Table
+	public function getTable(string $modelClass): TableInterface
 	{
 		if (!isset($this->tables[$modelClass])) {
 			$this->tables[$modelClass] = $this->loadTable($modelClass);
@@ -55,7 +60,7 @@ class Schema implements Configurable
 	 * Get table by name
 	 * @throws TableNotFound
 	 */
-	public function getTableByName(string $tableName): Table
+	public function getTableByName(string $tableName): TableInterface
 	{
 		if (!isset($this->tableNames[$tableName])) {
 			throw new TableNotFound('Table was not configured (name: ' . $tableName . ')');
@@ -66,33 +71,33 @@ class Schema implements Configurable
 	/**
 	 *
 	 */
-	protected function loadTable($className)
+	protected function loadTable($modelClass)
 	{
 		// Make sure this table exists
-		if (!isset($this->config['tables'][$className])) {
-			// $this->config['tables'][$className] = ['modelClass' => $className];
-			throw new TableNotFound('Table not found: ' . $className);
+		if (!isset($this->config['tables'][$modelClass])) {
+			// $this->config['tables'][$modelClass] = ['modelClass' => $modelClass];
+			throw new TableNotFound('Table not found: ' . $modelClass);
 		}
 
 		// Get table config
-		$tableConf = $this->config['tables'][$className];
+		$tableConf = $this->config['tables'][$modelClass];
 
 		// Associations
 		foreach ($tableConf['associations'] as $assocName => $assocConf) {
 			$tableConf['associations'][$assocName] = $this->instantiateConfigurable(
-				'', $assocConf, ['ActiveRedis\Association']
+				'', $assocConf, [self::DEFAULT_ASSOCIATION_NAMESPACE]
 			);
 		}
 
 		// Behavior
 		foreach ($tableConf['behaviors'] as $index => $behaviorConf) {
 			$tableConf['behaviors'][$index] = $this->instantiateConfigurable(
-				'', $behaviorConf, ['ActiveRedis\Behavior']
+				'', $behaviorConf, [self::DEFAULT_BEHAVIOR_NAMESPACE]
 			);
 		}
 
 		// Create table
-		return $this->instantiateConfigurable(Table::class, $tableConf);
+		return $this->instantiateConfigurable(self::DEFAULT_TABLE_CLASS, $tableConf);
 	}
 
 	/**

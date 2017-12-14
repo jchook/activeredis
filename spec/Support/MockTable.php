@@ -2,9 +2,9 @@
 
 namespace ActiveRedisSpec\Support;
 
-use ActiveRedis\Table;
+use ActiveRedis\Table\KeyTable;
 
-class MockTable extends Table
+class MockTable extends KeyTable
 {
 	protected $emitted = [];
 

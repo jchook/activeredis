@@ -7,7 +7,7 @@ use ActiveRedis\Association\AbstractAssociation;
 use ActiveRedis\Database;
 use ActiveRedis\Network;
 use ActiveRedis\Model;
-use ActiveRedis\Table;
+use ActiveRedis\Table\TableInterface;
 use ActiveRedisSpec\Support\MockConnection;
 
 // Models for this test
@@ -69,7 +69,7 @@ final class HighLevelTest extends TestCase
 	{
 		$db = $this->db;
 		$projectTable = $db->getSchema()->getTable(Project::class);
-		$this->assertInstanceOf(Table::class, $projectTable);
+		$this->assertInstanceOf(TableInterface::class, $projectTable);
 
 		$assocs = $projectTable->getAssociations();
 		foreach ($assocs as $assoc) {

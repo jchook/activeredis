@@ -10,7 +10,9 @@
 - Reduce number of mocks needed by consolidating like functionality
 
 - The idea of a storage engine... would affect all behaviors too
+	- This is handled by Tables?
 
+- Indexes should store an encoded primary key, not the "DB key" string
 
 - Need to fix Redisent pr use something more robust for pagination of large sets
 - Table::getModel() should change...

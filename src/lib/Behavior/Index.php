@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace ActiveRedis\Behavior;
 use ActiveRedis\Model;
-use ActiveRedis\Table;
+use ActiveRedis\Table\TableInterface;
 
 /**
  * Save indexes to a model so that it can be located
@@ -13,7 +13,7 @@ class Index extends AbstractBehavior
 {
 	protected $attributes = [];
 
-	public function beforeWrite(Table $table, Model $model): void
+	public function beforeWrite(TableInterface $table, Model $model): void
 	{
 		// Database
 		$db = $model::db()->getConnection();

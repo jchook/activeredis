@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace ActiveRedis;
 
+use ActiveRedis\Table\TableInterface;
+
 /**
  *
  * Query
@@ -11,8 +13,13 @@ namespace ActiveRedis;
  */
 class Query implements Configurable
 {
-	public $fn;
-	public $args;
+	protected $delete;
+	protected $insert;
+	protected $limit;
+	protected $offset;
+	protected $select;
+	protected $update;
+	protected $where;
 
 	/**
 	 * Standard configurable constructor
