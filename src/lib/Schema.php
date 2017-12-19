@@ -15,7 +15,7 @@ class Schema implements Configurable
 {
 	protected const DEFAULT_ASSOCIATION_NAMESPACE = 'ActiveRedis\Association';
 	protected const DEFAULT_BEHAVIOR_NAMESPACE = 'ActiveRedis\Behavior';
-	protected const DEFAULT_TABLE_CLASS = 'ActiveRedis\Table\KeyTable';
+	protected const DEFAULT_TABLE_CLASS = 'ActiveRedis\Table\BasicTable';
 
 	/**
 	 * array of [$modelClass => $tableInstance]

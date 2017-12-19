@@ -20,7 +20,7 @@ use ActiveRedis\QueryResult;
  * Table
  *
  */
-class KeyTable implements TableInterface, Configurable
+class BasicTable implements TableInterface, Configurable
 {
 	/**
 	 * Array of association objects
@@ -89,19 +89,19 @@ class KeyTable implements TableInterface, Configurable
 	 */
 	protected function decodeData(string $data): array
 	{
-		return json_decode($data, true);
+		return json_decode($data, true) ?: [];
+		// TODO: error handling
 	}
 
 	/**
 	 * Decode a model stored in the database
-	 * @deprecated
 	 */
 	protected function decodeModel(string $data): Model
 	{
-		$attr = json_decode($data, true);
+		$attr = $this->decodeData($data, true);
 		$modelClass = $this->getModelClass();
 		return new $modelClass([
-			'attributes' => $attr
+			'attributes' => $attr,
 		]);
 	}
 
@@ -132,15 +132,15 @@ class KeyTable implements TableInterface, Configurable
 	protected function encodeData(array $data): string
 	{
 		return json_encode($data);
+		// TODO: error handling
 	}
 
 	/**
 	 * Encode a model for storage in the database
-	 * @deprecated
 	 */
 	protected function encodeModel(Model $model): string
 	{
-		return json_encode($model->getAttributes());
+		return $this->encodeData($model->getAttributes());
 	}
 
 	/**
@@ -192,16 +192,32 @@ class KeyTable implements TableInterface, Configurable
 	}
 
 	/**
-	 * Fetch a model by DB key
-	 * @deprecated in favor of runQuery()
+	 * Get a model from the table
 	 */
-	public function getModel(string $dbKey): Model
+	public function getModel(array $primaryKey): Model
 	{
-		$data = $this->getDatabase()->get($dbKey);
+		$key = $this->getKey($primaryKey);
+		$data = $this->getDatabase()->get($key);
 		if (!$data) {
-			throw new RecordNotFound('Could not find record with key: ' . $dbKey);
+			throw new RecordNotFound('Could not find record with key: ' . $key);
 		}
 		return $this->decodeModel($data);
+	}
+
+	/**
+	 * Model references are stored against indexes
+	 */
+	public function getModelByRef(string $ref): Model
+	{
+		$primaryKey = $this->getModel($this->decodeData($ref));
+	}
+
+	/**
+	 * Model references are stored against indexes
+	 */
+	public function getModelRef(Model $model): string
+	{
+		return $this->encodeData($model->getPrimaryKey());
 	}
 
 	/**
@@ -261,13 +277,13 @@ class KeyTable implements TableInterface, Configurable
 				$modelClass = $this->getModelClass();
 				return new QueryResult([
 					'iterator' => new ArrayIterator([
-						new $modelClass([
-							'attributes' => $attr,
-						]),
+						$this->getModel($where),
 					]),
 				]);
 			} else {
-				// TODO
+				return new Queryresult([
+					'iterator' =>
+				]);
 			}
 		}
 
@@ -282,8 +298,6 @@ class KeyTable implements TableInterface, Configurable
 
 	/**
 	 * Save a model to the database.
-	 * @see Model::save()
-	 * @deprecated in favor of runQuery()
 	 */
 	public function saveModel(Model $model): void
 	{
@@ -292,5 +306,4 @@ class KeyTable implements TableInterface, Configurable
 			$this->encodeModel($model)
 		);
 	}
-
 }

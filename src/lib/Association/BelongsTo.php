@@ -16,7 +16,7 @@ class BelongsTo extends AbstractAssociation
 		$rightClass = $this->rightClass;
 		$table = $rightClass::table();
 		try {
-			return $table->getModel($this->foreignKey);
+			return $table->loadModel($this->foreignKey);
 		} catch (ModelNotFound $e) {}
 	}
 }
