@@ -12,14 +12,21 @@ namespace ActiveRedis;
 class QueryResult implements Configurable
 {
 	/**
-	 * @var Exception
+	 * @var ?Exception
+	 * @deprecated... why are we catching and attaching exceptions?? let them go.
 	 */
 	protected $exception;
 
 	/**
 	 * @var Iterator
 	 */
-	protected $iterator;
+	protected $result;
+
+	/**
+	 * Next page query
+	 * @link https://github.com/phpredis/phpredis#sscan
+	 */
+	protected $nextPageQuery;
 
 	/**
 	 * Standard configurable constructor
@@ -41,9 +48,14 @@ class QueryResult implements Configurable
 		return $this->exception;
 	}
 
-	public function getIterator(): Iterator
+	public function getResult(): Iterator
 	{
-		return $this->iterator;
+		return $this->result;
+	}
+
+	public function getNextPageQuery()
+	{
+		return $this->nextPageQuery;
 	}
 
 	public function isSuccessful(): bool

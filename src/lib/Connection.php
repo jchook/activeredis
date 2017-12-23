@@ -1,9 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ActiveRedis;
 
+use Redis;
+
 /**
- * Interface to PHPRedis or other
+ * Redis connection wrapper / compatability layer
  */
 class Connection implements Configurable
 {
@@ -26,7 +30,7 @@ class Connection implements Configurable
 	 * Ensure that a connection to the server exists. Note that if you inject a
 	 * connection, it is assumed to be connected.
 	 */
-	public function touch()
+	public function touch(): void
 	{
 		if (!$this->redis) {
 
@@ -37,10 +41,6 @@ class Connection implements Configurable
 
 			// Persistent connection
 			// TODO: Configurable persistence? Why wouldn't you want persistence?
-			// You know, this isn't the place, but asking why so is an anti-pattern
-			// except in scenarios where performance is extremely important. When it
-			// comes to libraries.. you should aim to maximize versatility given the
-			// constraints of time/resources... and of course unix philosophy.
 			$redis->pconnect($this->host, $this->port);
 
 			// Automatically retry when scan returns something funky due to

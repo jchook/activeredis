@@ -22,6 +22,12 @@ use ActiveRedis\QueryResult;
  */
 class BasicTable implements TableInterface, Configurable
 {
+
+	/**
+	 * Maximum page size
+	 */
+	const PAGE_SIZE = 100;
+
 	/**
 	 * Array of association objects
 	 * @var AbstractAssociation[]
@@ -33,6 +39,12 @@ class BasicTable implements TableInterface, Configurable
 	 * @var AbstractBehavior[]
 	 */
 	protected $behaviors = [];
+
+	/**
+	 * Array of composite indexes stored for speedup
+	 * @var array of [dbKey => [[attrs..], ...]]
+	 */
+	protected $compositeIndexes = [];
 
 	/**
 	 * @param Database
@@ -106,6 +118,16 @@ class BasicTable implements TableInterface, Configurable
 	}
 
 	/**
+	 * Delete a model from the database
+	 */
+	public function deleteModel(Model $model): int
+	{
+		$this->emitEvent('beforeDeleteModel', [$model]);
+		return $this->getDatabase()->del($this->getKey($model));
+		$this->emitEvent('afterDeleteModel', [$model]);
+	}
+
+	/**
 	 * Emit an event
 	 * @param string $eventName
 	 * @param array $args
@@ -160,6 +182,54 @@ class BasicTable implements TableInterface, Configurable
 	public function getAssociations(): array
 	{
 		return $this->associations;
+	}
+
+	/**
+	 * Get a compsite index from a selector
+	 *
+	 * NOTE: This will only return a complete composite index, but it may not be
+	 * the optimal composite index. HELP WANTED on this problem.
+	 */
+	public function getCompositeIndex(array $attrs): array
+	{
+		$key = $this->getKey($attrs);
+		if (array_key_exists($key, $this->compositeIndexes)) {
+			return $this->compositeIndexes[$key];
+		}
+
+		// First sort all of the indexes...
+		// this should be done at a different time maybe...
+		$indexes = [];
+		foreach ($this->indexes as $key => $index) {
+			$indexes[$key] = $index->getAttributes();
+			sort($indexes[$key]);
+		}
+		sort($indexes);
+
+		// Then go through them and find useful indexes
+		$found = [];
+		$composite = [];
+		foreach ($indexes as $index) {
+
+			// Cannot use the index if it's more detailed than the selector
+			if (array_diff($index, $attrs)) {
+				continue;
+			}
+
+			// Only use the index if it's not redundant
+			if (array_diff($index, $found)) {
+				$composite[] = $index;
+				$found = array_merge($found, $index);
+			}
+		}
+
+		// Is it a complete index of the selector?
+		if (array_diff($attrs, $found)) {
+			return $this->compositeIndexes[$key] = [];
+		}
+
+		// Return all the keys needed
+		return $this->compositeIndexes[$key] = $composite;
 	}
 
 	/**
@@ -248,6 +318,22 @@ class BasicTable implements TableInterface, Configurable
 	}
 
 	/**
+	 * Tell if a certain set of attributes is indexed.
+	 */
+	public function hasIndex(array $attributes): bool
+	{
+		if ($attributes) {
+			foreach ($this->indexes as $index) {
+				$attr = $index->getAttributes();
+				if ($attr && ($attr == $attributes)) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/**
 	 * Run a query against the table
 	 * @param Query $query
 	 * @return QueryResult
@@ -260,9 +346,6 @@ class BasicTable implements TableInterface, Configurable
 			throw new QueryNotSupported('Operations without a where clause is not yet supported on ' . get_class($this));
 		}
 
-		// Redis key
-		$key = $this->getKey($where);
-
 		// Determine whether this is a primary key or not
 		$isPrimaryKey = ! array_diff_key(
 			array_flip($this->getPrimaryKey()),
@@ -271,19 +354,61 @@ class BasicTable implements TableInterface, Configurable
 
 		// Select
 		if ($query->isSelect()) {
+
+			// Trivial primary key select?
 			if ($isPrimaryKey) {
-				$data = $this->getDatabase()->get($key);
-				$attr = $this->decodeData($data);
-				$modelClass = $this->getModelClass();
+				$model = $this->getModel($where);
 				return new QueryResult([
-					'iterator' => new ArrayIterator([
-						$this->getModel($where),
-					]),
+					'query' => $query,
+					'result' => new ArrayIterator([ $model ]),
 				]);
+
 			} else {
-				return new Queryresult([
-					'iterator' =>
-				]);
+
+				// Single page?
+				// Note that limits are important. They express expectations about the
+				// resource requirements of the result. Without them, an extra limiting
+				// abstraction is returned to prevent memory overflow.
+				if ($query->hasLimit() && ($query->getLimit() <= $this::PAGE_SIZE)) {
+					if ($this->hasIndex(array_keys($where))) {
+						$db = $this->getDatabase();
+						$key = $this->getKey($where);
+						$offset = $query->getOffset();
+						$refs = $db->sScan($key, $offset, null, $query->getLimit());
+						return new QueryResult([
+							'offset' => $offset,
+							'query' => $query,
+							'result' => is_array($refs)
+								? new BasicPage($this, $refs)
+								: $refs
+							,
+						]);
+					} else {
+						// Composite index
+						// Note that PAGE_SIZE cannot be enforced here.
+						$composite = $this->getCompositeIndex($where);
+						if (!$composite) {
+							throw new QueryNotSupported('Cannot query non-indexed columns.');
+						}
+						$db = $this->getDatabase();
+						$keys = array_map([$this, 'getKey'], $composite);
+						$refs = call_user_func_array([$db,'sInter'], $keys);
+						return new QueryResult([
+							'query' => $query,
+							'result' => new BasicPage($this, $refs),
+						]);
+					}
+
+				// Multiple pages of results?
+				// The BasicPaginator will ease the complexity of iterating
+				} else {
+					$nextQuery = clone $query;
+					$nextQuery->setLimit(self::PAGE_SIZE);
+					return new QueryResult([
+						'query' => $query,
+						'result' => new BasicPaginator($this, $nextQuery),
+					]);
+				}
 			}
 		}
 
@@ -301,6 +426,8 @@ class BasicTable implements TableInterface, Configurable
 	 */
 	public function saveModel(Model $model): void
 	{
+		// TODO: Index
+		// TODO: EXEC/MULTI
 		$this->getDatabase()->set(
 			$this->getKey($model->getPrimaryKey()),
 			$this->encodeModel($model)

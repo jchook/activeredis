@@ -174,6 +174,11 @@ abstract class Model implements Configurable
 		}
 	}
 
+	public function delete()
+	{
+		$this->table->deleteModel($this);
+	}
+
 	/**
 	 * Emits an event to the Table
 	 */
