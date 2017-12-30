@@ -29,10 +29,10 @@ final class IndexTest extends TestCase
 		]);
 
 		$table = $model::table();
-		$dbKey = $model->getDbKey();
+		$dbKey = $table->getKey($model->getPrimaryKey());
 
 		// First make sure our assumptions are correct about IDs
-		$this->assertEquals('db:mocks?id=1', $table->getKey($model->getPrimaryKey()));
+		$this->assertEquals('db:mocks?id=1', $dbKey);
 
 		// Old key
 		$oldNameKey = $table->getKey($model->getAttributes(['name']));
@@ -47,7 +47,7 @@ final class IndexTest extends TestCase
 		$this->assertTrue($oldNameKey !== $newNameKey);
 
 		// Index the change
-		$index->handleEvent('beforeWrite', [$table, $model]);
+		$index->handleEvent('beforeSave', [$table, $model]);
 
 		// See what the connection did
 		$calls = $model::db()->getConnection()->popCalls();
@@ -57,4 +57,3 @@ final class IndexTest extends TestCase
 		]);
 	}
 }
-

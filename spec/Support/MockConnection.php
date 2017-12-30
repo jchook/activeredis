@@ -13,7 +13,7 @@ class MockConnection extends Connection
 		// Ahhh...
 	}
 
-	public function __call($fn, $args)
+	public function __call($fn, array $args = [])
 	{
 		$this->calls[] = [$fn, $args];
 	}

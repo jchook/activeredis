@@ -97,7 +97,7 @@ final class HighLevelTest extends TestCase
 		$project->save();
 
 		// Retrieve it
-		$next = $project::table()->getModel($project->getDbKey());
+		$next = $project::table()->getModel($project->getPrimaryKey());
 
 		$this->assertInstanceOf(Project::class, $next);
 		$this->assertEquals($next->id, $id);
@@ -115,6 +115,8 @@ final class HighLevelTest extends TestCase
 		$project->owner = $user;
 		$project->save();
 		$user->save();
+
+		$this->assertTrue(true);
 
 		$projects = Project::findAllBy(['owner_id' => $user->id]);
 		// $nextProject = next($projects);

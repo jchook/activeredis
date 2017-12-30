@@ -24,7 +24,10 @@ abstract class AbstractBehavior implements Configurable
 	 */
 	public function handleEvent($eventName, $args): void
 	{
-		call_user_func_array([$this, $eventName], $args);
+		$callback = [$this, $eventName];
+		if (is_callable($callback)) {
+			call_user_func_array($callback, $args);
+		}
 	}
 
 	/**

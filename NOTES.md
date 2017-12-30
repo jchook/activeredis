@@ -18,3 +18,26 @@
 - Table::getModel() should change...
 	- Should use a more generic Table::query($query) or something
 	- Remember we want this to be generic and work for PDO etc in the future
+
+
+---
+
+2017-12-20
+
+- Table needs like.. addIndex() and removeIndex() indexModel() deindexModel()?
+- Table needs to query properly using indexes
+	- SINTER for unindexed multiple where conditions
+	- SSCAN for indexed where conditions (single or multiple, should be the same)
+	- ERROR if unindexed single where condition b/c naw
+- Table indexes need to be array of keys
+- Table encodeData should sort keys
+- Table module should be dissolved
+	- No need for "Table", maybe "Basic", but not even that. Flatten plz.
+	- Advanced extensions of basic layer can have their own namespaces.
+	- We will make interfaces for stuff like Model, and keep TableInterface.
+
+
+- TABLE should emit events, not model.
+- Also call them beforeSaveModel, etc not beforeSave
+- Index multiple columns at once
+-

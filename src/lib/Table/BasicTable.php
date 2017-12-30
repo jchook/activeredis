@@ -131,18 +131,16 @@ class BasicTable implements TableInterface, Configurable
 	 * Emit an event
 	 * @param string $eventName
 	 * @param array $args
-	 * @return bool returns false if default is prevented
+	 * @return bool returns false if default should be prevented
 	 */
 	public function emitEvent(string $eventName, array $args): bool
 	{
 		array_unshift($args, $this);
 		foreach ($this->behaviors as $behavior) {
-			if (method_exists($behavior, $eventName)) {
-				try {
-					$behavior->handleEvent($eventName, $args);
-				} catch (PreventDefault $e) {
-					return false;
-				}
+			try {
+				$behavior->handleEvent($eventName, $args);
+			} catch (PreventDefault $e) {
+				return false;
 			}
 		}
 		return true;
@@ -153,6 +151,7 @@ class BasicTable implements TableInterface, Configurable
 	 */
 	protected function encodeData(array $data): string
 	{
+		ksort($data);
 		return json_encode($data);
 		// TODO: error handling
 	}
